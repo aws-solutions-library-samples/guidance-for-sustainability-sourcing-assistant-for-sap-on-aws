@@ -285,7 +285,7 @@ Click Add database.
   <img src="../imgs/crawl8.png" width="90%" height="90%"><br>
 </p>
 
-Name the database to whatever is convenient. In this example we are naming the database "athena_db.
+Name the database to athena_db, which is the name of the database used in the Lambda function.
 <p align="center">
   <img src="../imgs/crawl9.png" width="90%" height="90%"><br>
 </p>
