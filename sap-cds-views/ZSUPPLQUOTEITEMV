@@ -1,0 +1,88 @@
+@AbapCatalog.sqlViewName: 'ZSUPPLQUOTEITEMV'
+@AbapCatalog.compiler.compareFilter: true
+@AbapCatalog.preserveKey: true
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@ClientHandling.algorithm: #SESSION_VARIABLE
+@ObjectModel :{ usageType.dataClass     : #TRANSACTIONAL,
+                usageType.sizeCategory  : #M,
+                usageType.serviceQuality: #D,
+                supportedCapabilities   : [ #EXTRACTION_DATA_SOURCE ],
+                modelingPattern        : #ANALYTICAL_FACT
+              }
+
+@VDM.viewType                           : #CONSUMPTION
+
+@Metadata.ignorePropagatedAnnotations   : true
+
+@VDM.lifecycle.contract.type: #PUBLIC_LOCAL_API
+
+@Analytics: {
+    dataCategory: #FACT,
+    dataExtraction: {
+        enabled: true,
+        delta.changeDataCapture: {
+            mapping:[
+                {
+                    table: 'ekpo', role: #MAIN,
+                    viewElement: ['SupplierQuotation', 'SupplierQuotationItem'],
+                    tableElement: ['ebeln', 'ebelp']
+                },
+                {
+                    table: 'ekko', role: #LEFT_OUTER_TO_ONE_JOIN,
+                    viewElement: ['SupplierQuotation'],
+                    tableElement: ['ebeln']}
+            ]
+        }
+    }
+    }
+
+@EndUserText.label: 'Supplier Quotation Item'
+define view ZSUPPLIERQUOTEITEM
+  as select from I_SupplierQuotationItem_Api01 as SupplierQuotationItem
+
+    association [1..1] to I_SupplierQuotation_Api01 as _SupplierQuotation             on  $projection.SupplierQuotation = _SupplierQuotation.SupplierQuotation
+
+  ----Extension Association
+  association [1..1] to E_PurchasingDocumentItem  as _SupplierQuotationItmExtension on  $projection.SupplierQuotation     = _SupplierQuotationItmExtension.PurchasingDocument
+                                                                                    and $projection.SupplierQuotationItem = _SupplierQuotationItmExtension.PurchasingDocumentItem
+{
+ key SupplierQuotationItem.SupplierQuotation,
+  key SupplierQuotationItem.SupplierQuotationItem,
+      SupplierQuotationItem.PurchasingDocumentCategory,
+      SupplierQuotationItem.PurchasingDocumentItemText,
+      SupplierQuotationItem.Material,
+      SupplierQuotationItem.ManufacturerMaterial,
+      SupplierQuotationItem.SupplierMaterialNumber,
+      SupplierQuotationItem.ManufacturerPartNmbr,
+      SupplierQuotationItem.Manufacturer,
+      SupplierQuotationItem.MaterialGroup,
+      SupplierQuotationItem.Plant,
+      SupplierQuotationItem.IncotermsClassification,
+      SupplierQuotationItem.IncotermsTransferLocation,
+      SupplierQuotationItem.IncotermsLocation1,
+      SupplierQuotationItem.IncotermsLocation2,
+      OrderPriceUnit,
+      OrderPriceUnitToOrderUnitNmrtr,
+      OrdPriceUnitToOrderUnitDnmntr,
+      OrderQuantityUnit,
+      OrderItemQtyToBaseQtyNmrtr,
+      OrderItemQtyToBaseQtyDnmntr,
+      @Semantics.quantity.unitOfMeasure: 'OrderQuantityUnit'
+      OrderQuantity,
+      PurgDocPriceDate,
+      BaseUnit,
+      @Semantics.amount.currencyCode: 'DocumentCurrency'
+      NetAmount,
+      @Semantics.amount.currencyCode: 'DocumentCurrency'
+      NetPriceAmount,
+      @Semantics.quantity.unitOfMeasure: 'OrderQuantityUnit'
+      NetPriceQuantity,
+      SupplierQuotationItem.DocumentCurrency,
+      SupplierQuotationItem.PurchaseRequisition,
+      SupplierQuotationItem.PurchaseRequisitionItem,
+      SupplierQuotationItem.RequestForQuotation,
+      SupplierQuotationItem.RequestForQuotationItem,
+
+      /*Association*/
+      _SupplierQuotation
+}

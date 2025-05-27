@@ -1,0 +1,77 @@
+@AbapCatalog.sqlViewName: 'ZSUPPLIERQUOTEV'
+@AbapCatalog.compiler.compareFilter: true
+@AbapCatalog.preserveKey: true
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@ClientHandling.algorithm: #SESSION_VARIABLE
+@ObjectModel :{ usageType.dataClass     : #TRANSACTIONAL,
+                usageType.sizeCategory  : #M,
+                usageType.serviceQuality: #D,
+                supportedCapabilities   : [ #EXTRACTION_DATA_SOURCE ],
+                modelingPattern        : #ANALYTICAL_FACT
+              }
+
+@VDM.viewType                           : #CONSUMPTION
+
+@Metadata.ignorePropagatedAnnotations   : true
+
+@VDM.lifecycle.contract.type: #PUBLIC_LOCAL_API
+@Analytics: {
+    dataCategory: #FACT,
+    dataExtraction: {
+        enabled: true,
+        delta.changeDataCapture: {
+            mapping:[ {
+                        table           : 'ekko', role: #MAIN,
+                        viewElement     : ['SupplierQuotation' ],
+                        tableElement    : ['ebeln' ]
+                      }
+                    ]
+        }
+    }
+}
+@EndUserText.label: 'Supplier Quotation'
+define view ZSUPPLIERQUOTE
+  as select from I_SupplierQuotation_Api01 as SupplierQuotation
+  ----Extension Association
+  association [1..1] to E_PurchasingDocument as _SupplierQuotationExtension on $projection.SupplierQuotation = _SupplierQuotationExtension.PurchasingDocument
+
+{
+  key SupplierQuotation.SupplierQuotation,
+      SupplierQuotation.CompanyCode,
+      SupplierQuotation.PurchasingDocumentCategory,
+      SupplierQuotation.PurchasingDocumentType,
+      SupplierQuotation.Supplier,
+      SupplierQuotation.CreatedByUser,
+      SupplierQuotation.CreationDate,
+      SupplierQuotation.LastChangeDateTime,
+      SupplierQuotation.Language,
+      SupplierQuotation.DocumentCurrency,
+      SupplierQuotation.IncotermsClassification,
+      SupplierQuotation.IncotermsTransferLocation,
+      SupplierQuotation.IncotermsVersion,
+      SupplierQuotation.IncotermsLocation1,
+      SupplierQuotation.IncotermsLocation2,
+      SupplierQuotation.PaymentTerms,
+      SupplierQuotation.CashDiscount1Days,
+      SupplierQuotation.CashDiscount2Days,
+      SupplierQuotation.CashDiscount1Percent,
+      SupplierQuotation.CashDiscount2Percent,
+      SupplierQuotation.NetPaymentDays,
+      SupplierQuotation.PricingProcedure,
+      SupplierQuotation.PurchasingDocumentCondition as PricingDocument,
+      SupplierQuotation.PurchasingOrganization,
+      SupplierQuotation.PurchasingGroup,
+      SupplierQuotation.PurchasingDocumentOrderDate,
+      SupplierQuotation.RequestForQuotation,
+      SupplierQuotation.SupplierQuotationExternalID,
+      SupplierQuotation.QuotationSubmissionDate,
+      SupplierQuotation.QuotationLatestSubmissionDate,
+      SupplierQuotation.BindingPeriodValidityEndDate,
+      SupplierQuotation.ExchangeRate,
+      SupplierQuotation.ExchangeRateIsFixed,
+      SupplierQuotation.QTNLifecycleStatus          as QtnLifecycleStatus,
+      SupplierQuotation.FollowOnDocumentCategory,
+      SupplierQuotation.FollowOnDocumentType as PurgDocFollowOnDocumentType,
+      @Semantics.booleanIndicator: true
+      SupplierQuotation.IsEndOfPurposeBlocked
+}

@@ -1,0 +1,75 @@
+@AbapCatalog.sqlViewName: 'ZRFQITEMV'
+@AbapCatalog.compiler.compareFilter: true
+@AbapCatalog.preserveKey: true
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@ClientHandling.algorithm: #SESSION_VARIABLE
+@ObjectModel :{ usageType.dataClass     : #TRANSACTIONAL,
+                usageType.sizeCategory  : #M,
+                usageType.serviceQuality: #D,
+                supportedCapabilities   : [ #EXTRACTION_DATA_SOURCE ],
+                modelingPattern        : #ANALYTICAL_FACT
+              }
+
+@VDM.viewType                           : #CONSUMPTION
+
+@Metadata.ignorePropagatedAnnotations   : true
+
+@VDM.lifecycle.contract.type: #PUBLIC_LOCAL_API
+
+@Analytics: {
+    dataCategory: #FACT,
+    dataExtraction: {
+        enabled: true,
+        delta.changeDataCapture: {
+            mapping:[
+                {
+                    table: 'ekpo', role: #MAIN,
+                    viewElement: ['RequestForQuotation', 'RequestForQuotationItem'],
+                    tableElement: ['ebeln', 'ebelp']
+                },
+                {
+                    table: 'ekko', role: #LEFT_OUTER_TO_ONE_JOIN,
+                    viewElement: ['RequestForQuotation'],
+                    tableElement: ['ebeln']}
+            ]
+        }
+    }
+    }
+
+@EndUserText.label: 'RFQ Items'
+define view ZRFQITEM
+  as select from I_RfqItem_Api01 as RfqItem
+
+  association [1..1] to I_Requestforquotation_Api01 as _RequestForQuotation on $projection.RequestForQuotation = _RequestForQuotation.RequestForQuotation
+
+
+  ----Extension Association
+  association [1..1] to E_PurchasingDocumentItem      as _RequestQtnItemExtension on  $projection.RequestForQuotation = _RequestQtnItemExtension.PurchasingDocument
+                                                                                      and $projection.RequestForQuotationItem   = _RequestQtnItemExtension.PurchasingDocumentItem
+{
+  key RfqItem.RequestForQuotation,
+  key RfqItem.RequestForQuotationItem,
+      RfqItem.PurchasingDocumentCategory,
+      RfqItem.PurchasingDocumentItemText,
+      RfqItem.Material,
+      RfqItem.ManufacturerMaterial,
+      RfqItem.ManufacturerPartNmbr,
+      RfqItem.Manufacturer,
+      RfqItem.MaterialGroup,
+      RfqItem.Plant,
+      RfqItem.ManualDeliveryAddressID,
+      RfqItem.ReferenceDeliveryAddressID,
+      RfqItem.IncotermsClassification,
+      RfqItem.IncotermsTransferLocation,
+      RfqItem.IncotermsLocation1,
+      RfqItem.IncotermsLocation2,
+      RfqItem.OrderQuantityUnit,
+      RfqItem.OrderItemQtyToBaseQtyNmrtr,
+      RfqItem.OrderItemQtyToBaseQtyDnmntr,
+      RfqItem.BaseUnit,
+      RfqItem.PurchaseRequisition,
+      RfqItem.PurchaseRequisitionItem,
+
+  /*Associations*/
+  _RequestForQuotation
+}

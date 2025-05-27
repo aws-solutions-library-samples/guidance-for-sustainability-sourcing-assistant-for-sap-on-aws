@@ -1,0 +1,79 @@
+@AbapCatalog.sqlViewName: 'ZRFQV'
+@AbapCatalog.compiler.compareFilter     : true
+@AbapCatalog.preserveKey                : true
+@AccessControl:{ authorizationCheck     : #MANDATORY,
+                 personalData.blocking  : #BLOCKED_DATA_EXCLUDED
+               }
+@ClientHandling.algorithm: #SESSION_VARIABLE
+@ObjectModel :{ usageType.dataClass     : #TRANSACTIONAL,
+                usageType.sizeCategory  : #M,
+                usageType.serviceQuality: #D,
+                supportedCapabilities   : [ #EXTRACTION_DATA_SOURCE ],
+                modelingPattern        : #ANALYTICAL_FACT
+              }
+
+@VDM.viewType                           : #CONSUMPTION
+
+@Metadata.ignorePropagatedAnnotations   : true
+
+@VDM.lifecycle.contract.type: #PUBLIC_LOCAL_API
+@Analytics: {
+    dataCategory: #FACT,
+    dataExtraction: {
+        enabled: true,
+        delta.changeDataCapture: {
+            mapping:[ {
+                        table           : 'ekko', role: #MAIN,
+                        viewElement     : ['RequestForQuotation' ],
+                        tableElement    : ['ebeln' ]
+                      }
+                    ]
+        }
+    }
+}
+@EndUserText.label: 'RFQ'
+define view ZRFQ
+  as select from I_Requestforquotation_Api01 as RequestForQuotation
+ --Extension Association
+  association [0..1] to E_PurchasingDocument         as _RequestQtnExtension      on $projection.RequestForQuotation = _RequestQtnExtension.PurchasingDocument
+
+{
+  key RequestForQuotation.RequestForQuotation,
+      RequestForQuotation.CompanyCode,
+      RequestForQuotation.PurchasingDocumentCategory,
+      RequestForQuotation.PurchasingDocumentType,
+      RequestForQuotation.CreatedByUser,
+      RequestForQuotation.CreationDate,
+      RequestForQuotation.LastChangeDateTime,
+      RequestForQuotation.Language,
+      RequestForQuotation.PurchasingOrganization,
+      RequestForQuotation.PurchasingGroup,
+      RequestForQuotation.DocumentCurrency,
+      RequestForQuotation.IncotermsClassification,
+      RequestForQuotation.IncotermsTransferLocation,
+      RequestForQuotation.IncotermsVersion,
+      RequestForQuotation.IncotermsLocation1,
+      RequestForQuotation.IncotermsLocation2,
+      RequestForQuotation.PaymentTerms,
+      RequestForQuotation.CashDiscount1Days,
+      RequestForQuotation.CashDiscount2Days,
+      RequestForQuotation.CashDiscount1Percent,
+      RequestForQuotation.CashDiscount2Percent,
+      RequestForQuotation.NetPaymentDays,
+      RequestForQuotation.ValidityStartDate,
+      RequestForQuotation.ValidityEndDate,
+      RequestForQuotation.RFQPublishingDate,
+      RequestForQuotation.QuotationLatestSubmissionDate,
+      RequestForQuotation.BindingPeriodValidityEndDate,
+      @Semantics.amount.currencyCode: 'DocumentCurrency'
+      RequestForQuotation.TargetAmount,
+      RequestForQuotation.RFQLifecycleStatus,
+      RequestForQuotation.RequestForQuotationName,
+      RequestForQuotation.QuotationEarliestSubmsnDate,
+      RequestForQuotation.LatestRegistrationDate,
+      RequestForQuotation.CorrespncInternalReference,
+      RequestForQuotation.FollowOnDocumentCategory,
+      RequestForQuotation.FollowOnDocumentType as PurgDocFollowOnDocumentType,
+      @Semantics.booleanIndicator: true
+      RequestForQuotation.IsEndOfPurposeBlocked
+}

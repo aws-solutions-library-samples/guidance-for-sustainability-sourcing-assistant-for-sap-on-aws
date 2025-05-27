@@ -1,0 +1,1028 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Supporting resources for SAP GenAI assistant powered by Agents and Knowledge base for Amazon Bedrock"
+Metadata:
+  LICENSE: >-
+    Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this
+    software and associated documentation files (the "Software"), to deal in the Software
+    without restriction, including without limitation the rights to use, copy, modify,
+    merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Code Asset S3 Bucket, Lambda Deployment Package Keys, and Lambda Layer ARNs
+        Parameters:
+          - ArtifactBucket
+          - SecurityGroupId
+          - SubnetId01
+          - SubnetId02
+    ParameterLabels:
+      ArtifactBucket:
+        default: your-code-assets-bucket-name
+      SecurityGroupId:
+        default: your-security-group-id
+      SubnetId01:
+        default: your-priv-subnet-01
+      SubnetId02:
+        default: your-priv-subnet-02
+
+Parameters:
+  ArtifactBucket:
+    Description: S3 Bucket Containing Code Assets for Agent Action Group Lambda Functions, and other artifacts
+    Type: String
+    Default: your-code-assets-bucket-name
+  SecurityGroupId:
+    Description: Security group for Lambda 
+    Type: String
+    Default: your-security-group-name
+  SubnetId01:
+    Description: Private subnet id for Lambda
+    Type: String
+    Default: your-priv-subnet-id-01
+  SubnetId02:
+    Description: Private subnet id for Lambda
+    Type: String
+    Default: your-priv-subnet-id-02
+
+Resources:
+  SAPCredentials:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: sap_secret_cred
+      Description: SAP System Credentials
+      KmsKeyId: alias/aws/secretsmanager
+      SecretString: !Sub |
+        {
+          "SAPUSER": "",
+          "SAPPASSWORD": ""
+        }
+
+  RequestsLambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: !Join [ '-', [ 'RequestsLayer',!Select [4, !Split ['-', !Select [2, !Split ['/', !Ref AWS::StackId]]]]]]
+      Description: Requests layer for Lambda Functions
+      Content:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: agent/lambda/python_os_req_auth.zip
+      CompatibleArchitectures:
+        - x86_64
+        - arm64
+      CompatibleRuntimes:
+        - python3.11
+        - python3.12
+        - python3.13
+
+  SAPAgentLambdaRole: 
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-SAPAgentAGLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSQuicksightAthenaAccess'
+        - 'arn:aws:iam::aws:policy/AmazonBedrockReadOnly'
+        - 'arn:aws:iam::aws:policy/ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+      Policies:
+        - PolicyName: S3WriteOnlyAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                  - 's3:PutObjectTagging'
+                Resource: 'arn:aws:s3:::*/*'
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:DescribeSecret'
+                Resource: !Ref SAPCredentials
+
+  SAPAthenaResponseFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref SAPAthenaResponseLambda
+      Principal: 'bedrock.amazonaws.com'
+
+  SAPAthenaResponseLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      FunctionName: !Sub Bedrock-txtsql-action-${AWS::StackName}
+      Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: 
+            - !Ref SecurityGroupId
+        SubnetIds: 
+            - !Ref SubnetId01
+            - !Ref SubnetId02
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: "UpdateYourBucketName"
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import time
+          import os
+          from time import sleep
+
+          # Initialize the Athena client
+          athena_client = boto3.client('athena')
+
+          def lambda_handler(event, context):
+              print(event)
+
+              def athena_query_handler(event):
+                  # Fetch parameters for the new fields
+
+                  # Extracting the SQL query
+                  query = event['requestBody']['content']['application/json']['properties'][0]['value']
+
+                  print("the received QUERY:",  query)
+        
+                  #s3_output = 's3://s30000000000/'
+                  s3_output = f"s3://{os.environ['S3_BUCKET_NAME']}"
+
+                  # Execute the query and wait for completion
+                  execution_id = execute_athena_query(query, s3_output)
+                  result = get_query_results(execution_id)
+
+                  return result
+
+              def execute_athena_query(query, s3_output):
+                  response = athena_client.start_query_execution(
+                          QueryString=query,
+                          ResultConfiguration={'OutputLocation': s3_output}
+                         )
+                  return response['QueryExecutionId']
+
+              def check_query_status(execution_id):
+                  response = athena_client.get_query_execution(QueryExecutionId=execution_id)
+                  return response['QueryExecution']['Status']['State']
+
+              def get_query_results(execution_id):
+                  while True:
+                      status = check_query_status(execution_id)
+                      if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
+                          break
+                      sleep(1)  # Polling interval
+
+                  if status == 'SUCCEEDED':
+                      return athena_client.get_query_results(QueryExecutionId=execution_id)
+                  else:
+                      raise Exception(f"Query failed with status '{status}'")
+
+              action_group = event.get('actionGroup')
+              api_path = event.get('apiPath')
+
+              print("api_path: ", api_path)
+
+              result = ''
+              response_code = 200
+    
+              if api_path == '/athenaQuery':
+                  result = athena_query_handler(event)
+              else:
+                  response_code = 404
+                  result = {"error": f"Unrecognized api path: {action_group}::{api_path}"}
+
+              response_body = {
+                  'application/json': {
+                      'body': result
+                  }
+              }
+
+              action_response = {
+                  'actionGroup': action_group,
+                  'apiPath': api_path,
+                  'httpMethod': event.get('httpMethod'),
+                  'httpStatusCode': response_code,
+                  'responseBody': response_body
+              }
+
+              api_response = {'messageVersion': '1.0', 'response': action_response}
+              return api_response
+
+      Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
+      Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer
+
+  SAPPOCreateFunctionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref SAPPOCreateLambda
+      Principal: 'bedrock.amazonaws.com'
+
+  SAPPOCreateLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      FunctionName: !Sub SAPPOC-action-${AWS::StackName}
+      Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+            - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: "UpdateYourBucketName"
+          API_AWARD_URL: "SAP API URL to Award Quotation"
+          API_CREATE_PO_URL: "SAP API URL to Create PO"
+      Code:
+        ZipFile: |
+          import json
+          import requests
+          import boto3
+          import time
+          import os
+          from datetime import datetime, timedelta
+          
+          def get_secret():
+              secret_name = 'sap_secret_cred'
+              region_name = os.environ.get('AWS_REGION')
+              
+              try:
+                  session = boto3.session.Session()
+                  client = session.client(
+                      service_name='secretsmanager',
+                      region_name=region_name
+                  )
+                  
+                  get_secret_value_response = client.get_secret_value(
+                      SecretId=secret_name
+                  )
+              except Exception as e:
+                  print(f"Error retrieving secret: {str(e)}")
+                  raise e
+              else:
+                  if 'SecretString' in get_secret_value_response:
+                      secret = json.loads(get_secret_value_response['SecretString'])
+                      return secret['SAPUSER'], secret['SAPPASSWORD']
+                  raise Exception("No secret string found in secret")
+          
+          def execute_athena_query(query, athena_client, database, output_location):
+              try:
+                  response = athena_client.start_query_execution(
+                      QueryString=query,
+                      QueryExecutionContext={'Database': database},
+                      ResultConfiguration={'OutputLocation': output_location}
+                  )
+                  query_execution_id = response['QueryExecutionId']
+                  
+                  while True:
+                      query_status = athena_client.get_query_execution(QueryExecutionId=query_execution_id)
+                      status = query_status['QueryExecution']['Status']['State']
+                      if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
+                          break
+                      time.sleep(1)
+          
+                  if status == 'SUCCEEDED':
+                      return athena_client.get_query_results(QueryExecutionId=query_execution_id)
+                  else:
+                      raise Exception(f'Athena query failed with status: {status}')
+              except Exception as e:
+                  print(f"Error executing Athena query: {str(e)}")
+                  raise
+          
+          def awardquote(event, username, password):
+              try:
+                  quotation_id = event['requestBody']['content']['application/json']['properties'][0]['value']
+                  print(f"Awarding quotation: {quotation_id}")
+                  api_url = os.environ['API_AWARD_URL']
+                  
+                  print(f"Award Quotation API URL: {api_url}")
+                  
+                  # Step 1: Fetch CSRF token
+                  session = requests.Session()
+                  csrf_response = session.get(
+                      api_url,
+                      headers={
+                          'X-CSRF-Token': 'Fetch',
+                          'Accept': 'application/json'
+                      },
+                      auth=(username, password)
+                  )
+                  
+                  print(f"CSRF Response Status: {csrf_response.status_code}")
+                  print(f"CSRF Response Headers: {dict(csrf_response.headers)}")
+                  
+                  if csrf_response.status_code != 200:
+                      raise Exception(f"Failed to fetch CSRF token. Status: {csrf_response.status_code}")
+                  
+                  csrf_token = csrf_response.headers.get('x-csrf-token')
+                  print(f"CSRF Token received: {csrf_token}")
+          
+                  # Step 2: Award quotation
+                  headers = {
+                      'X-CSRF-Token': csrf_token,
+                      'X-Requested-With': 'XMLHttpRequest',
+                      'Accept': 'application/json',
+                      'Accept-Encoding': 'gzip,deflate',
+                      'Content-Type': 'application/json'
+                  }
+                  
+                  params = {
+                      "SupplierQuotation": f"'{quotation_id}'",
+                      "IsActiveEntity": "true"
+                  }
+          
+                  response = session.post(
+                      api_url,
+                      headers=headers,
+                      params=params,
+                      auth=(username, password)
+                  )
+                  
+                  print(f"Award quotation response status: {response.status_code}")
+                  print(f"Award quotation response: {response.text}")
+          
+                  if response.status_code in [200, 201]:
+                      return 200, {"message": f"Quotation {quotation_id} is awarded successfully."}
+                  else:
+                      error_message = response.json()['error']['message']['value']
+                      return 400, {"message": f"Failed to award the quotation {quotation_id} due to the error: {error_message}."}
+              except Exception as e:
+                  print(f"Error in award quote: {str(e)}")
+                  return 500, {"message": f"Error awarding quotation: {str(e)}"}
+
+          def createPO(event, username, password):
+              try:
+                  athena_client = boto3.client('athena')
+                  database = 'athena_db'
+                  output_location = f"s3://{os.environ['S3_BUCKET_NAME']}"
+
+                  quotation_number = event['requestBody']['content']['application/json']['properties'][0]['value']
+                  print(f"Creating PO for quotation: {quotation_number}")
+                  
+                  # Parameterized query using ? as placeholder
+                  header_query = """
+                      SELECT requestforquotation, companycode, purchasingorganization, purchasinggroup, documentcurrency, 
+                            supplier, creationdate, qtnlifecyclestatus
+                      FROM supplier_quotation_header
+                      WHERE supplierquotation = ?
+                      ORDER BY lastchangedatetime DESC
+                      LIMIT 1
+                  """
+                  # Pass parameters as a list
+                  header_results = execute_athena_query(
+                      header_query, 
+                      athena_client, 
+                      database, 
+                      output_location,
+                      parameters=[quotation_number]  # Parameters passed as a list
+                  )
+                  
+                  header_row = header_results['ResultSet']['Rows'][1]['Data']
+                  quotation_status = header_row[7]['VarCharValue']
+
+                  if quotation_status in ['01', '02']:
+                      response_code, result = awardquote(event, username, password)
+                      if response_code != 200:
+                          return response_code, result
+
+                  header_details = {
+                      "CompanyCode": header_row[1]['VarCharValue'],
+                      "Supplier": header_row[5]['VarCharValue'],
+                      "PurchasingOrganization": header_row[2]['VarCharValue'],
+                      "PurchasingGroup": header_row[3]['VarCharValue']
+                  }
+
+                  # Parameterized query for items
+                  items_query = """
+                      SELECT DISTINCT supplierquotationitem, plant, 
+                            cast(nullif(netamount,0) as int) / cast(nullif(netpriceamount,0) as int) "orderquantity", 
+                            netpriceamount, netpricequantity, material
+                      FROM supplier_quotation_items
+                      WHERE supplierquotation = ?
+                  """
+                  
+                  items_results = execute_athena_query(
+                      items_query, 
+                      athena_client, 
+                      database, 
+                      output_location,
+                      parameters=[quotation_number]  # Parameters passed as a list
+                  )
+
+                  line_items = [
+                      {
+                          "PurchaseOrderItem": row['Data'][0]['VarCharValue'],
+                          "Plant": row['Data'][1]['VarCharValue'],
+                          "OrderQuantity": row['Data'][2]['VarCharValue'],
+                          "NetPriceAmount": row['Data'][3]['VarCharValue'],
+                          "NetPriceQuantity": row['Data'][4]['VarCharValue'],
+                          "Material": row['Data'][5]['VarCharValue']
+                      } for row in items_results['ResultSet']['Rows'][1:]
+                  ]
+         
+                  payload = {
+                      "CompanyCode": header_details["CompanyCode"],
+                      "PurchaseOrderType": "NB",
+                      "Supplier": header_details["Supplier"],
+                      "PurchasingOrganization": header_details["PurchasingOrganization"],
+                      "PurchasingGroup": header_details["PurchasingGroup"],
+                      "to_PurchaseOrderItem": line_items
+                  }
+                  
+                  api_url = os.environ['API_CREATE_PO_URL']
+                  
+                  print(f"Create PO API URL: {api_url}")
+          
+                  session = requests.Session()
+                  csrf_response = session.get(
+                      api_url,
+                      headers={'X-CSRF-Token': 'Fetch', 'Accept': 'application/json'},
+                      auth=(username, password)
+                  )
+                  
+                  if csrf_response.status_code != 200:
+                      raise Exception(f"Failed to fetch CSRF token. Status: {csrf_response.status_code}")
+                  
+                  csrf_token = csrf_response.headers.get('x-csrf-token')
+                  print(f"CSRF Token received: {csrf_token}")
+                  
+                  headers = {
+                      'X-CSRF-Token': csrf_token,
+                      'X-Requested-With': 'XMLHttpRequest',
+                      'Accept': 'application/json',
+                      'Accept-Encoding': 'gzip,deflate',
+                      'Content-Type': 'application/json'
+                  } 
+          
+                  print(f"Request payload: {json.dumps(payload, indent=2)}")
+          
+                  response = session.post(
+                      api_url,
+                      headers=headers,
+                      json=payload,
+                      auth=(username, password)
+                  )
+          
+                  print(f"PO Creation Response Status: {response.status_code}")
+                  print(f"PO Creation Response: {response.text}")
+          
+                  if response.status_code == 201:
+                      po_data = response.json()
+                      purchase_order = po_data['d']['PurchaseOrder']
+                      return 201, {"message": f"PO {purchase_order} Created Successfully"}
+                  else:
+                      error_details = response.json() if response.text else {"message": "Unknown error"}
+                      return 400, {"message": f"Failed to create PO: {error_details.get('error', {}).get('message', {}).get('value', 'Unknown error')}"}
+              except Exception as e:
+                  print(f"Error in create PO: {str(e)}")
+                  return 500, {"message": f"Error creating PO: {str(e)}"}
+          
+          def lambda_handler(event, context):
+              try:
+                  print(f"Event received: {json.dumps(event, indent=2)}")
+                  
+                  action_group = event.get('actionGroup', 'defaultActionGroup')
+                  api_path = event.get('apiPath', '/defaultApiPath')
+                           
+                  username, password = get_secret()
+                  print(f"Username retrieved from Secrets Manager: {username}")
+                  print("Password retrieved from Secrets Manager: Yes")
+                  
+                  if not username or not password:
+                      raise Exception("Missing credentials in Secrets Manager")
+          
+                  if api_path == '/awardQuotation':
+                      response_code, result = awardquote(event, username, password)
+                  elif api_path == '/createPO':
+                      response_code, result = createPO(event, username, password)
+                  else:
+                      response_code = 400
+                      result = {"message": f"Invalid API path: {api_path}"}
+          
+                  response_body = {
+                      'application/json': {
+                          'body': result
+                      }
+                  }
+          
+                  action_response = {
+                      'actionGroup': action_group,
+                      'apiPath': api_path,
+                      'httpMethod': event.get('httpMethod', 'POST'),
+                      'httpStatusCode': response_code,
+                      'responseBody': response_body
+                  }
+          
+                  print(f"Final response: {json.dumps(action_response, indent=2)}")
+          
+                  return {
+                      'messageVersion': '1.0',
+                      'response': action_response
+                  }
+          
+              except Exception as e:
+                  print(f"Error in lambda_handler: {str(e)}")
+                  result = {
+                      "message": f"Error processing request: {str(e)}"
+                  }
+                  
+                  response_body = {
+                      'application/json': {
+                          'body': result
+                      }
+                  }
+          
+                  action_response = {
+                      'actionGroup': action_group,
+                      'apiPath': api_path,
+                      'httpMethod': event.get('httpMethod', 'POST'),
+                      'httpStatusCode': 500,
+                      'responseBody': response_body
+                  }
+          
+                  return {
+                      'messageVersion': '1.0',
+                      'response': action_response
+                  }
+      Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
+      Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer 
+
+  RandomStringFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+            - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import random
+          import string
+          
+          def generate_random_string(length=6):
+              # Define character sets
+              letters = string.ascii_lowercase
+              digits = string.digits
+              
+              # Generate string with at least one number
+              # First character is always a letter
+              result = random.choice(letters)
+              # One character must be a number
+              result += random.choice(digits)
+              # Remaining characters can be either
+              remaining_length = length - 2
+              remaining_chars = ''.join(random.choices(letters + digits, k=remaining_length))
+              result += remaining_chars
+              
+              # Shuffle the string (except first character)
+              chars = list(result[1:])
+              random.shuffle(chars)
+              return result[0] + ''.join(chars)
+          
+          def lambda_handler(event, context):
+              responseData = {}
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      # Generate two different random strings
+                      string1 = generate_random_string()
+                      string2 = generate_random_string()
+                      # Ensure strings are different
+                      while string2 == string1:
+                          string2 = generate_random_string()
+                      responseData['RandomString1'] = string1
+                      responseData['RandomString2'] = string2
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+      Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
+      Timeout: 900
+
+  GenerateRandomStrings:
+    Type: Custom::RandomString
+    Properties:
+      ServiceToken: !GetAtt RandomStringFunction.Arn
+
+  SupplierBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "sap-supplierbucket-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  SupplierKBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AmazonBedrockKnowledgeBaseTrustPolicy
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+
+  SupplierKBRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "supplierkbpolicy-${AWS::StackName}"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: 
+              - "bedrock:InvokeModel"
+              - "bedrock:CreateKnowledgeBase"
+              - "bedrock:ListFoundationModels"
+              - "bedrock:ListCustomModels"
+              - "bedrock:Retrieve"
+              - "bedrock:Search"
+              - "bedrock:GetKnowledgeBase"
+              - "bedrock:ListKnowledgeBases"
+            Resource: 
+              - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+              - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+          - Effect: Allow
+            Action:
+              - "aoss:APIAccessAll"
+              - "aoss:CreateIndex"
+              - "aoss:DeleteIndex"
+              - "aoss:UpdateIndex"
+              - "aoss:DescribeIndex"
+              - "aoss:ReadDocument"
+              - "aoss:WriteDocument"
+              - "aoss:BatchGetCollection"
+              - "aoss:CreateCollection"
+              - "aoss:DeleteCollection"
+              - "aoss:UpdateCollection"
+              - "aoss:CreateCollectionItems"
+              - "aoss:DeleteCollectionItems"
+              - "aoss:UpdateCollectionItems"
+              - "aoss:DescribeCollectionItems"
+            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*"
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !GetAtt SupplierBucket.Arn
+              - !Sub "${SupplierBucket.Arn}/*"
+      Roles:
+        - !Ref SupplierKBRole
+
+  OpenSearchAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: [OpenSearchCollection, OpenSearchSecurityPolicy]
+    Properties:
+        Name: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString2}"
+        Type: "data"
+        Description: "Access policy for Knowledge Base"
+        Policy:
+            Fn::Sub:
+                - |
+                    [{
+                        "Rules": [
+                            {
+                                "ResourceType": "collection",
+                                "Resource": ["collection/${KBName}"],
+                                "Permission": [
+                                    "aoss:DescribeCollectionItems",
+                                    "aoss:CreateCollectionItems",
+                                    "aoss:UpdateCollectionItems"
+                                ]
+                            },
+                            {
+                                "ResourceType": "index",
+                                "Resource": ["index/${KBName}/*"],
+                                "Permission": [
+                                    "aoss:UpdateIndex",
+                                    "aoss:DescribeIndex",
+                                    "aoss:ReadDocument",
+                                    "aoss:WriteDocument",
+                                    "aoss:CreateIndex"
+                                ]
+                            }
+                        ],
+                        "Principal": [
+                            "${SupplierKBRole.Arn}",
+                            "${LambdaExecutionRole.Arn}"
+                        ],
+                        "Description": "Access policy for Bedrock Knowledge Base"
+                    }]
+                - KBName: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString1}"
+
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+        Name: !Sub  "bdk-kb-cf-${GenerateRandomStrings.RandomString1}"
+        Type: "encryption"
+        Description: "Encryption policy for Knowledge Base collection"
+        Policy:
+            Fn::Sub:
+                - |
+                    {
+                        "Rules": [
+                            {
+                                "ResourceType": "collection",
+                                "Resource": ["collection/${KBName}"]
+                            }
+                        ],
+                        "AWSOwnedKey": true
+                    }
+                - KBName: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString1}"
+
+  OpenSearchSecurityPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    DependsOn: OpenSearchCollection
+    Properties:
+        Name: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString1}" 
+        Type: "network"
+        Description: "Network policy for Knowledge Base"
+        Policy:
+            Fn::Sub:
+                - |
+                    [{
+                        "Rules":[
+                            {
+                                "ResourceType": "collection",
+                                "Resource": ["collection/${KBName}"]
+                            },
+                            {
+                                "ResourceType": "dashboard",
+                                "Resource": ["collection/${KBName}"]
+                            }
+                        ],
+                        "AllowFromPublic": true
+                    }]
+                - KBName: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString1}" 
+
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn: OpenSearchEncryptionPolicy
+    Properties:
+        Name: !Sub "bdk-kb-cf-${GenerateRandomStrings.RandomString1}" 
+        Description: "Vector store for Knowledge Base"
+        Type: "VECTORSEARCH"
+        StandbyReplicas: "DISABLED"
+
+  VectorIndexFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: OpenSearchCollection
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+           - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import os
+          import time
+          from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth, OpenSearchException
+
+          def handler(event, context):
+            try:
+              print(event)
+              if event['RequestType'] in ['Create', 'Update']:
+                time.sleep(60) 
+                session = boto3.Session()
+                credentials = session.get_credentials()
+                region = session.region_name
+
+                auth = AWSV4SignerAuth(credentials, region, service='aoss')
+                
+                collection_endpoint = os.environ['COLLECTION_ENDPOINT'].replace('https://', '')
+                
+                client = OpenSearch(
+                  hosts=[{'host': collection_endpoint, 'port': 443}],
+                  http_auth=auth,
+                  use_ssl=True,
+                  verify_certs=True,
+                  connection_class=RequestsHttpConnection,
+                  timeout=300
+                )
+
+                index_name = "bedrock-knowledge-base-default-index"
+                index_body = {
+                  "settings": {
+                    "index": {
+                      "knn": True,
+                      "knn.algo_param.ef_search": 512
+                    }
+                  },
+                  "mappings": {
+                    "properties": {
+                      "bedrock-knowledge-base-default-vector": {
+                        "type": "knn_vector",
+                        "dimension": 1024,
+                        "method": {
+                          "engine": "faiss",
+                          "name": "hnsw",
+                          "space_type": "l2",
+                          "parameters": {
+                            "ef_construction": 512,
+                            "m": 16
+                          }
+                        }
+                      },
+                      "AMAZON_BEDROCK_METADATA": {
+                        "type": "text",
+                        "index": False
+                      },
+                      "AMAZON_BEDROCK_TEXT_CHUNK": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "id": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "x-amz-bedrock-kb-data-source-id": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "x-amz-bedrock-kb-source-uri": {
+                        "type": "text",
+                        "index": True
+                      }
+                    }
+                  }
+                }
+
+                response = client.indices.create(
+                  index=index_name,
+                  body=index_body
+                )
+
+                print(response)
+                
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              else:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            except Exception as e:
+              print(e)
+              cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+      Environment:
+        Variables:
+          COLLECTION_ENDPOINT: !GetAtt OpenSearchCollection.CollectionEndpoint
+      Timeout: 300
+      Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
+      Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+      Policies:
+        - PolicyName: OpenSearchAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'aoss:CreateIndex'
+                  - 'aoss:DeleteIndex'
+                  - 'aoss:UpdateIndex'
+                  - 'aoss:DescribeIndex'
+                  - 'aoss:ReadDocument'
+                  - 'aoss:WriteDocument'
+                  - 'aoss:CreateCollectionItems'
+                  - 'aoss:DeleteCollectionItems'
+                  - 'aoss:UpdateCollectionItems'
+                  - 'aoss:DescribeCollectionItems'
+                  - 'aoss:APIAccessAll'
+                Resource: !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*'
+
+  CreateVectorIndex:
+    Type: Custom::CreateVectorIndex
+    DependsOn: 
+      - OpenSearchAccessPolicy
+      - OpenSearchSecurityPolicy
+      - OpenSearchCollection
+      - LambdaExecutionRole
+    Properties:
+      ServiceToken: !GetAtt VectorIndexFunction.Arn
+
+  KBNAgent:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: CreateVectorIndex
+    Properties:
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        ArtifactBucket: !Ref ArtifactBucket
+        SupplierKBRole: !GetAtt SupplierKBRole.Arn
+        OpenSearchCollection: !GetAtt OpenSearchCollection.Arn
+        SupplierBucket: !GetAtt SupplierBucket.Arn
+        SAPAthenaResponseLambda: !GetAtt SAPAthenaResponseLambda.Arn
+        SAPPOCreateLambda: !GetAtt SAPPOCreateLambda.Arn
+      TemplateURL: !Sub "https://${ArtifactBucket}.s3.amazonaws.com/cfn/sap-assistant-resources-02.yml"
+
+  Frontend:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        S3BucketName: !Ref ArtifactBucket
+        S3KeyName: frontend/deployment.zip
+        SecurityGroupId: !Ref SecurityGroupId
+        SubnetId01: !Ref SubnetId01
+        SubnetId02: !Ref SubnetId02
+      TemplateURL: !Sub "https://${ArtifactBucket}.s3.amazonaws.com/cfn/sap-assistant-resources-03.yml"
+
+
+Outputs:
+  BedrockAgentId:
+    Description: "ID of the created Bedrock Agent from nested stack"
+    Value: !GetAtt KBNAgent.Outputs.AgentId
+
+  BedrockAgentAliasId:
+    Description: "ID of the created Bedrock Agent Alias from nested stack"
+    Value: !GetAtt KBNAgent.Outputs.AgentAliasId
+
+  UserPoolId:
+    Description: Cognito User Pool ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.UserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.UserPoolClientId
+
+  IdentityPoolId:
+    Description: Cognito Identity Pool ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.IdentityPoolId
+
+  FrontendRegion:
+    Description: AWS Region from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.Region
+
+  FrontendAmplifyAppId:
+    Description: Amplify App ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.AmplifyAppId
+
+  FrontendAppURL:
+    Description: Application URL from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.AppURL

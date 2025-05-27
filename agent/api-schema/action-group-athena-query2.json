@@ -1,0 +1,98 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "AthenaQuery API",
+    "description": "API for querying data from an Athena database",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/athenaQuery": {
+      "post": {
+        "operationId": "executeAthenaQuery",
+        "summary": "Execute Athena Query",
+        "description": "Execute a query on an Athena database",
+        "x-amazon-bedrock-agent-action": true,
+        "requestBody": {
+          "description": "Athena query details",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "Query"
+                ],
+                "properties": {
+                  "ProcedureId": {
+                    "type": "string",
+                    "description": "Unique identifier for the procedure",
+                    "nullable": true
+                  },
+                  "Query": {
+                    "type": "string",
+                    "description": "SQL Query",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response with query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ResultSet"],
+                  "properties": {
+                    "ResultSet": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "A single row of query results"
+                      },
+                      "description": "Results returned by the query"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

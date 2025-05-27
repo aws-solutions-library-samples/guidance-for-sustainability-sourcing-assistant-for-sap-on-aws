@@ -1,0 +1,120 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Procurement Processing - Award Quotation",
+    "description": "Create tasks on procure to pay",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/awardQuotation": {
+      "post": {
+        "operationId": "awardQuotation",
+        "summary": "Award a quotation in procurement process",
+        "description": "Award Quotation",
+        "x-amazon-bedrock-agent-action": true,
+        "requestBody": {
+          "description": "Quotation Details",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "QuotationID"
+                ],
+                "properties": {
+                  "QuotationID": {
+                    "type": "string",
+                    "description": "Unique identifier for the quotation",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response with quotation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["QuotationDetails"],
+                  "properties": {
+                    "QuotationDetails": {
+                      "type": "object",
+                      "description": "Details of the awarded quotation",
+                      "additionalProperties": true,
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "description": "Status of the quotation award"
+                        },
+                        "awardedDate": {
+                          "type": "string",
+                          "description": "Date when the quotation was awarded"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid quotation ID or request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message"],
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Quotation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message"],
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error message indicating quotation was not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message"],
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Internal server error message"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
