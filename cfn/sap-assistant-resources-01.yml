@@ -224,7 +224,7 @@ Resources:
               api_response = {'messageVersion': '1.0', 'response': action_response}
               return api_response
 
-      Runtime: "python3.12"
+      Runtime: "python3.13"
       ReservedConcurrentExecutions: 10
       Timeout: 900
       Layers:
@@ -565,7 +565,7 @@ Resources:
                       'messageVersion': '1.0',
                       'response': action_response
                   }
-      Runtime: "python3.12"
+      Runtime: "python3.13"
       ReservedConcurrentExecutions: 10
       Timeout: 900
       Layers:
