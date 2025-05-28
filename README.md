@@ -25,8 +25,8 @@ Key procurement pain points include time-consuming quotation review processes, t
 
 The use case utilizes a range of AWS services and SAP technologies.  The numbers below are references to the diagram “High Level steps & architecture diagram”.
 1.	Data Extraction: Amazon AppFlow connects to SAP OData Connector for near real-time data extraction.
-2.	Data Storage: Amazon S3 stores extracted data in JSON format.
-3.	User Interface: A chatbot assistant using AWS Amplify receives natural language inputs from users.
+2.	Data Storage: Amazon S3 stores extracted data in JSON format. The data is crawled using Glue crawler.
+3.	User Interface: A chatbot assistant using AWS Amplify receives natural language inputs from users. Authentication happens through Amazon cognito.
 4.	Processing: Bedrock Agent interprets user input, leveraging its chat history and underlying Foundation Model.
 5.	Action Orchestration: Bedrock Agent is configured with Action Groups to manage processing steps.
 6.	Data Querying: Lambda functions translate natural language to SQL queries for Athena database.
