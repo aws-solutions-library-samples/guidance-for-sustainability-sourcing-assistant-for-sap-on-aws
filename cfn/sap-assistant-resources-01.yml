@@ -376,60 +376,50 @@ Resources:
                   athena_client = boto3.client('athena')
                   database = 'athena_db'
                   output_location = f"s3://{os.environ['S3_BUCKET_NAME']}"
-
+          
                   quotation_number = event['requestBody']['content']['application/json']['properties'][0]['value']
                   print(f"Creating PO for quotation: {quotation_number}")
                   
-                  # Parameterized query using ? as placeholder
-                  header_query = """
+                  # Parameterized header query
+                  header_query = f"""
                       SELECT requestforquotation, companycode, purchasingorganization, purchasinggroup, documentcurrency, 
-                            supplier, creationdate, qtnlifecyclestatus
+                             supplier, creationdate, qtnlifecyclestatus
                       FROM supplier_quotation_header
-                      WHERE supplierquotation = ?
+                      WHERE supplierquotation = '{quotation_number}'
                       ORDER BY lastchangedatetime DESC
                       LIMIT 1
                   """
-                  # Pass parameters as a list
-                  header_results = execute_athena_query(
-                      header_query, 
-                      athena_client, 
-                      database, 
-                      output_location,
-                      parameters=[quotation_number]  # Parameters passed as a list
-                  )
+                  header_results = execute_athena_query(header_query, athena_client, database, output_location)
                   
                   header_row = header_results['ResultSet']['Rows'][1]['Data']
                   quotation_status = header_row[7]['VarCharValue']
-
+          
                   if quotation_status in ['01', '02']:
                       response_code, result = awardquote(event, username, password)
                       if response_code != 200:
                           return response_code, result
-
+          
                   header_details = {
                       "CompanyCode": header_row[1]['VarCharValue'],
                       "Supplier": header_row[5]['VarCharValue'],
                       "PurchasingOrganization": header_row[2]['VarCharValue'],
                       "PurchasingGroup": header_row[3]['VarCharValue']
                   }
-
-                  # Parameterized query for items
-                  items_query = """
+          
+                  # Parameterized items query
+                  items_query = f"""
                       SELECT DISTINCT supplierquotationitem, plant, 
-                            cast(nullif(netamount,0) as int) / cast(nullif(netpriceamount,0) as int) "orderquantity", 
-                            netpriceamount, netpricequantity, material
+                             CAST(CASE 
+                                 WHEN netpriceamount = 0 THEN 0 
+                                 ELSE CAST(netamount AS DECIMAL(18,2)) / CAST(netpriceamount AS DECIMAL(18,2)) 
+                             END AS INTEGER) AS orderquantity, 
+                             netpriceamount, netpricequantity, material
                       FROM supplier_quotation_items
-                      WHERE supplierquotation = ?
+                      WHERE supplierquotation = '{quotation_number}'
                   """
                   
-                  items_results = execute_athena_query(
-                      items_query, 
-                      athena_client, 
-                      database, 
-                      output_location,
-                      parameters=[quotation_number]  # Parameters passed as a list
-                  )
-
+                  items_results = execute_athena_query(items_query, athena_client, database, output_location)
+          
                   line_items = [
                       {
                           "PurchaseOrderItem": row['Data'][0]['VarCharValue'],
@@ -440,7 +430,8 @@ Resources:
                           "Material": row['Data'][5]['VarCharValue']
                       } for row in items_results['ResultSet']['Rows'][1:]
                   ]
-         
+          
+                  # The rest of the function remains unchanged
                   payload = {
                       "CompanyCode": header_details["CompanyCode"],
                       "PurchaseOrderType": "NB",
@@ -449,7 +440,7 @@ Resources:
                       "PurchasingGroup": header_details["PurchasingGroup"],
                       "to_PurchaseOrderItem": line_items
                   }
-                  
+          
                   api_url = os.environ['API_CREATE_PO_URL']
                   
                   print(f"Create PO API URL: {api_url}")
@@ -497,7 +488,7 @@ Resources:
               except Exception as e:
                   print(f"Error in create PO: {str(e)}")
                   return 500, {"message": f"Error creating PO: {str(e)}"}
-          
+
           def lambda_handler(event, context):
               try:
                   print(f"Event received: {json.dumps(event, indent=2)}")
