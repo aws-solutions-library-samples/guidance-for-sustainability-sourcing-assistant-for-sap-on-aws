@@ -451,7 +451,7 @@ Update your SAP environment credentials which can call the ODATA APIs. In our us
 
 a. Naviage to [AWS Secrets Manager Console](https://console.aws.amazon.com/secretsmanager/listsecrets?).
 
-b. Locate and select the secret `sap_secret_cred`.
+b. Locate and select the secret `sap_credentials`.
 
 c. Click on `Retrieve secret value` button to edit the password.
 <p align="center">
