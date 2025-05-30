@@ -445,7 +445,7 @@ Knowledge Bases for Amazon Bedrock leverage Retrieval Augmented Generation (RAG)
 
 [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) is used to store the SAP credentials. The action group lambda functions read the SAP environment credentials from the secrets manager secrets.
 
-The deployment creates a secret with the name `sap_secret_cred`.
+The deployment creates a secret with the name `sap_credentials`.
 
 Update your SAP environment credentials which can call the ODATA APIs. In our usecase we have used bpinst user credentials.
 
