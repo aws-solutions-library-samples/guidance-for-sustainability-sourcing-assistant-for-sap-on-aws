@@ -330,7 +330,7 @@ ORDER BY creationdate
 
 Note, If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
 <p align="center">
-  <img src="../imgs/s3warning.png" width="90%" height="90%"><br>
+  <img src="../imgs/s3warning.png" width="40%" height="20%"><br>
 </p>
 
 Click the "Settings" tab in the top right corner of Athena
@@ -346,7 +346,7 @@ Return to your query and try running it again
 Note: If you don't have an S3 bucket already, click the "Browse S3" button next to the location field to create one.
 
 <p align="center">
-  <img src="../imgs/ath2.png" width="50%" height="20%"><br>
+  <img src="../imgs/ath2.png" width="90%" height="90%"><br>
 </p>
 
 You should now see data returned directly from the bucket.  In this example we are querying the table rfq_header, in database athena_db. This database was created when we ran the crawler earlier.
