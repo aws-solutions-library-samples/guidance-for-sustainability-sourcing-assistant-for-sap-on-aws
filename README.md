@@ -330,7 +330,7 @@ ORDER BY creationdate
 
 Note, If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
 <p align="center">
-  <img src="../imgs/s3warning.png" width="40%" height="20%"><br>
+  <img src="../imgs/s3warning.png" width="60%" height="40%"><br>
 </p>
 
 Click the "Settings" tab in the top right corner of Athena
