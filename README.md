@@ -503,7 +503,8 @@ Update the environment variables for the AWS Lambda functions created by this de
       SAP_BASE_URL: Enter the appropriate Base URL for your applicaiton
       Example: https://yourssaplogin.com
 
-      S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account (e.g. rfq-123456778910)
+      S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account 
+      Example:rfq-123456778910
 
 <p align="center">
  <img src="../imgs/02_lmd_env_var01.png" width="90%" height="90%"><br>
@@ -513,7 +514,8 @@ Update the environment variables for the AWS Lambda functions created by this de
    g. Click "Save" to apply the changes.
 
    h. Repeat steps b-g for the function named `Bedrock-txtsql-action-<YOUR-STACK-NAME>`, to update the evironment variable S3_BUCKET_NAME.
-      S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account
+      
+    ``` S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account
 
 <p align="center">
  <img src="../imgs/03_lmd_env_var02.png" width="90%" height="90%"><br>
