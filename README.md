@@ -322,10 +322,11 @@ Go to Athena, select Data Source “AwsDataCatalog” on the left-hand pane, sel
 
 
 Run a simple query to confirm you can query the data.
-
+```
 SELECT * 
 FROM rfq_header
 ORDER BY creationdate
+```
 
 <p align="center">
   <img src="../imgs/ath2.png" width="90%" height="90%"><br>
