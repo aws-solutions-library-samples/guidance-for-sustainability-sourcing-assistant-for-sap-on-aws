@@ -216,25 +216,14 @@ Click on Run Flow
   <img src="../imgs/flow9.png" width="90%" height="90%"><br>
 </p>
 
-Repeat the above for the remaining flows
+Repeat the above for the remaining flows.
 
-a) RFQ_ITEMS
+| Flow Name | SAP OData Object | SAP OData Subobject | Description |
+|-----------|-----------------|-------------------|-------------|
+| RFQ_ITEMS | ZCDS_RFQ_ITEM_SRV | FactsOfZRFQITEMV | Request for Quotation Items data service |
+| SUPPLIER_QUOTATION_HEADER | ZCDS_SUPPLIER_QUOTE_SRV | FactsOfZSUPPLIERQUOTEV | Supplier Quotation Header information service |
+| SUPPLIER_QUOTATION_ITEMS | ZCDS_SUPPLIER_QUOTE_ITEM_SRV | FactsOfZSUPPLQUOTEITEMV | Supplier Quotation Line Items data service |
 
-Source object:
-
-/sap/opu/odata/sap/ZCDS_RFQ_ITEM_SRV/FactsOfZRFQITEMV
-
-b) SUPPLIER_QUOTATION_HEADER 
-
-Source object:
-
-/sap/opu/odata/sap/ZCDS_SUPPLIER_QUOTE_SRV/FactsOfZSUPPLIERQUOTEV
-
-c) SUPPLIER_QUOTATION_ITEMS
-
-Source object:
-
-/sap/opu/odata/sap/ZCDS_SUPPLIER_QUOTE_ITEM_SRV/FactsOfZSUPPLQUOTEITEMV
 
 
 ## Create database and Glue Crawler in Amazon Glue 
