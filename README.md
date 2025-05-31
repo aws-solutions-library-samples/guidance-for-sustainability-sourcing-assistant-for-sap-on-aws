@@ -335,13 +335,18 @@ NOTE: If you receive the message "Before you run your first query, you need to s
 </p>
 
 Click the "Settings" tab in the top right corner of Athena
-In the "Query result location" field, enter an S3 path:
-Format: s3://your-bucket-name/folder/
-Example: s3://your-name-athena-results/query-results/
-Click "Save"
-Return to your query and try running it again
-Note: If you don't have an S3 bucket already, click the "Browse S3" button next to the location field to create one.
 
+In the "Query result location" field, enter an S3 path:
+
+Format: s3://your-bucket-name/folder/
+
+Example: s3://your-name-athena-results/query-results/
+
+Click "Save"
+
+Return to your query and try running it again
+
+Note: If you don't have an S3 bucket already, click the "Browse S3" button next to the location field to create one.
 <p align="center">
   <img src="../imgs/ath2.png" width="90%" height="90%"><br>
 </p>
