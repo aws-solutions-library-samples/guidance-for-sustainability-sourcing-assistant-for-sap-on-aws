@@ -328,21 +328,18 @@ FROM rfq_header
 ORDER BY creationdate
 ```
 
-Note, If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
+NOTE: If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
+
 <p align="center">
   <img src="../imgs/s3warning.png" width="60%" height="40%"><br>
 </p>
 
 Click the "Settings" tab in the top right corner of Athena
-
 In the "Query result location" field, enter an S3 path:
-
 Format: s3://your-bucket-name/folder/
 Example: s3://your-name-athena-results/query-results/
 Click "Save"
-
 Return to your query and try running it again
-
 Note: If you don't have an S3 bucket already, click the "Browse S3" button next to the location field to create one.
 
 <p align="center">
