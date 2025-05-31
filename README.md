@@ -328,7 +328,7 @@ FROM rfq_header
 ORDER BY creationdate
 ```
 
-NOTE: If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
+> NOTE: If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
 
 <p align="center">
   <img src="../imgs/s3warning.png" width="60%" height="40%"><br>
