@@ -28,18 +28,18 @@ Parameters:
      Type: String
      Description: Key name of the deployment zip file in S3
      Default: deployment.zip
-  SecurityGroupId:
-    Description: Security group for Lambda
-    Type: String
-    Default: your-security-group-name
-  SubnetId01:
-    Description: Private subnet id for Lambda
-    Type: String
-    Default: your-priv-subnet-id-01
-  SubnetId02:
-    Description: Private subnet id for Lambda
-    Type: String
-    Default: your-priv-subnet-id-02
+   SecurityGroupId:
+     Description: Security group for Lambda
+     Type: String
+     Default: your-security-group-name
+   SubnetId01:
+     Description: Private subnet id for Lambda
+     Type: String
+     Default: your-priv-subnet-id-01
+   SubnetId02:
+     Description: Private subnet id for Lambda
+     Type: String
+     Default: your-priv-subnet-id-02
 
 Resources:
   # Cognito Resources
