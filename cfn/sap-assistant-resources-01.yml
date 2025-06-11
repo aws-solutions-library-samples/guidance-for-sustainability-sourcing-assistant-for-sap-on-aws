@@ -348,14 +348,14 @@ Resources:
                   }
                   
                   params = {
-                      "SupplierQuotation": f"'{quotation_id}'",
-                      "IsActiveEntity": "true"
+                      "SupplierQuotation": quotation_id,
+                      "IsActiveEntity": True
                   }
           
                   response = session.post(
                       api_url,
                       headers=headers,
-                      params=params,
+                      json=params,
                       auth=(username, password)
                   )
                   
