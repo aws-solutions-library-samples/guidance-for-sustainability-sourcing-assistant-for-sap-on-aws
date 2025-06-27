@@ -404,6 +404,16 @@ CloudFormation prepopulates stack parameters with the default values provided in
 a. Before you run the shell script, navigate to the directory where you cloned the _amazon-bedrock-sap-sustainability-assistant_ repository and modify the shell script permissions to executable:
 ```sh
 # If not already cloned, clone the remote repository (https://github.com/aws-samples/amazon-bedrock-sap-sustainability-assistant) and change working directory to shell folder:
+
+# The Lambda layer contains third-party Python packages (requests, opensearch-py) that aren't included in the standard AWS Lambda runtime, so you must build and package these dependencies locally before deployment to ensure the Lambda functions can make HTTP calls to SAP systems and interact with OpenSearch.
+
+Build the layer:
+cd agent/lambda
+chmod +x build-layer.sh
+./build-layer.sh
+cd ../..
+Then run deployment:
+
 cd shell/
 chmod u+x create-sap-assistant.sh
 chmod u+x delete-sap-assistant.sh
