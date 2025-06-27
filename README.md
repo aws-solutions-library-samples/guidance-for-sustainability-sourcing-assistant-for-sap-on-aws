@@ -402,10 +402,11 @@ To emulate the creation of resources utilized by the agent, this solution uses t
 CloudFormation prepopulates stack parameters with the default values provided in the template. To provide alternative input values, you can specify parameters as environment variables that are referenced in the `ParameterKey=<ParameterKey>,ParameterValue=<Value>` pairs in the _create-customer-resources.sh_ shell script's `aws cloudformation create-stack` command. 
 
 a. Before you run the shell script, navigate to the directory where you cloned the _amazon-bedrock-sap-sustainability-assistant_ repository and modify the shell script permissions to executable:
-```sh
-# If not already cloned, clone the remote repository (https://github.com/aws-samples/amazon-bedrock-sap-sustainability-assistant) and change working directory to shell folder:
 
-# The Lambda layer contains third-party Python packages (requests, opensearch-py) that aren't included in the standard AWS Lambda runtime, so you must build and package these dependencies locally before deployment to ensure the Lambda functions can make HTTP calls to SAP systems and interact with OpenSearch.
+If not already cloned, clone the remote repository (https://github.com/aws-samples/amazon-bedrock-sap-sustainability-assistant) and change working directory to shell folder:
+
+The Lambda layer contains third-party Python packages (requests, opensearch-py) that aren't included in the standard AWS Lambda runtime, so you must build and package these dependencies locally before deployment to ensure the Lambda functions can make HTTP calls to SAP systems and interact with OpenSearch.
+```sh
 
 Build the layer:
 cd agent/lambda
