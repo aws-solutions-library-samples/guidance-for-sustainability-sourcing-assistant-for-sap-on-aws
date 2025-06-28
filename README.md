@@ -456,9 +456,10 @@ cd agent/lambda
 chmod +x build-layer.sh
 ./build-layer.sh
 cd ../..
-
+```
 set execute permission on create script, so we are ready for deployment:
 
+```sh
 cd shell/
 chmod u+x create-sap-assistant.sh
 chmod u+x delete-sap-assistant.sh
