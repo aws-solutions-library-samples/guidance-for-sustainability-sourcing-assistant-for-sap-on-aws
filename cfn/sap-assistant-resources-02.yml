@@ -262,9 +262,7 @@ Resources:
                     `purgdocfollowondocumenttype` string, 
                     `isendofpurposeblocked` string, 
                     `odq_changemode` string, 
-                    `odq_entitycntr` int)
-                  LOCATION
-                    's3://rfq-3397129935/RFQ_HEADER/';
+                    `odq_entitycntr` int);
                     </athena_schema>
 
                     <athena_schema>
@@ -292,9 +290,7 @@ Resources:
                     `purchaserequisition` string, 
                     `purchaserequisitionitem` string, 
                     `odq_changemode` string, 
-                    `odq_entitycntr` int)
-                  LOCATION
-                    's3://rfq-3397129935/RFQ_ITEMS/';
+                    `odq_entitycntr` int);
                     </athena_schema>  
                   
                     <athena_schema>
@@ -337,9 +333,7 @@ Resources:
                     `purgdocfollowondocumenttype` string, 
                     `isendofpurposeblocked` string, 
                     `odq_changemode` string, 
-                    `odq_entitycntr` int)
-                  LOCATION
-                    's3://rfq-3397129935/SUPPLIER_QUOTATION_HEADER/';
+                    `odq_entitycntr` int);
                     </athena_schema>
 
                     <athena_schema>
@@ -377,9 +371,7 @@ Resources:
                     `requestforquotation` string, 
                     `requestforquotationitem` string, 
                     `odq_changemode` string, 
-                    `odq_entitycntr` int)
-                  LOCATION
-                    's3://rfq-3397129935/SUPPLIER_QUOTATION_ITEMS/';
+                    `odq_entitycntr` int);
                     </athena_schema>
                   </athena_schemas>
 

@@ -230,8 +230,6 @@ Resources:
 
       Runtime: "python3.13"
       Timeout: 900
-      Layers:
-        - !Ref RequestsLambdaLayer
 
   SAPPOCreateFunctionPermission:
     Type: 'AWS::Lambda::Permission'
@@ -538,8 +536,6 @@ Resources:
                   }
       Runtime: "python3.13"
       Timeout: 900
-      Layers:
-        - !Ref RequestsLambdaLayer 
 
   RandomStringFunction:
     Type: AWS::Lambda::Function
@@ -713,8 +709,7 @@ Resources:
                             }
                         ],
                         "Principal": [
-                            "${SupplierKBRole.Arn}",
-                            "${LambdaExecutionRole.Arn}"
+                            "${SupplierKBRole.Arn}"
                         ],
                         "Description": "Access policy for Bedrock Knowledge Base"
                     }]
@@ -774,153 +769,11 @@ Resources:
         Type: "VECTORSEARCH"
         StandbyReplicas: "DISABLED"
 
-  VectorIndexFunction:
-    Type: AWS::Lambda::Function
-    DependsOn: OpenSearchCollection
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        ZipFile: |
-          import boto3
-          import cfnresponse
-          import os
-          import time
-          from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth, OpenSearchException
 
-          def handler(event, context):
-            try:
-              print(event)
-              if event['RequestType'] in ['Create', 'Update']:
-                time.sleep(60) 
-                session = boto3.Session()
-                credentials = session.get_credentials()
-                region = session.region_name
 
-                auth = AWSV4SignerAuth(credentials, region, service='aoss')
-                
-                collection_endpoint = os.environ['COLLECTION_ENDPOINT'].replace('https://', '')
-                
-                client = OpenSearch(
-                  hosts=[{'host': collection_endpoint, 'port': 443}],
-                  http_auth=auth,
-                  use_ssl=True,
-                  verify_certs=True,
-                  connection_class=RequestsHttpConnection,
-                  timeout=300
-                )
 
-                index_name = "bedrock-knowledge-base-default-index"
-                index_body = {
-                  "settings": {
-                    "index": {
-                      "knn": True,
-                      "knn.algo_param.ef_search": 512
-                    }
-                  },
-                  "mappings": {
-                    "properties": {
-                      "bedrock-knowledge-base-default-vector": {
-                        "type": "knn_vector",
-                        "dimension": 1024,
-                        "method": {
-                          "engine": "faiss",
-                          "name": "hnsw",
-                          "space_type": "l2",
-                          "parameters": {
-                            "ef_construction": 512,
-                            "m": 16
-                          }
-                        }
-                      },
-                      "AMAZON_BEDROCK_METADATA": {
-                        "type": "text",
-                        "index": False
-                      },
-                      "AMAZON_BEDROCK_TEXT_CHUNK": {
-                        "type": "text",
-                        "index": True
-                      },
-                      "id": {
-                        "type": "text",
-                        "index": True
-                      },
-                      "x-amz-bedrock-kb-data-source-id": {
-                        "type": "text",
-                        "index": True
-                      },
-                      "x-amz-bedrock-kb-source-uri": {
-                        "type": "text",
-                        "index": True
-                      }
-                    }
-                  }
-                }
 
-                response = client.indices.create(
-                  index=index_name,
-                  body=index_body
-                )
 
-                print(response)
-                
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-              else:
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-            except Exception as e:
-              print(e)
-              cfnresponse.send(event, context, cfnresponse.FAILED, {})
-
-      Environment:
-        Variables:
-          COLLECTION_ENDPOINT: !GetAtt OpenSearchCollection.CollectionEndpoint
-      Runtime: "python3.12"
-      Timeout: 900
-      Layers:
-        - !Ref RequestsLambdaLayer
-
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
-      Policies:
-        - PolicyName: OpenSearchAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'aoss:CreateIndex'
-                  - 'aoss:DeleteIndex'
-                  - 'aoss:UpdateIndex'
-                  - 'aoss:DescribeIndex'
-                  - 'aoss:ReadDocument'
-                  - 'aoss:WriteDocument'
-                  - 'aoss:CreateCollectionItems'
-                  - 'aoss:DeleteCollectionItems'
-                  - 'aoss:UpdateCollectionItems'
-                  - 'aoss:DescribeCollectionItems'
-                  - 'aoss:APIAccessAll'
-                Resource: !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*'
-
-  CreateVectorIndex:
-    Type: Custom::CreateVectorIndex
-    DependsOn: 
-      - OpenSearchAccessPolicy
-      - OpenSearchSecurityPolicy
-      - OpenSearchCollection
-      - LambdaExecutionRole
-    Properties:
-      ServiceToken: !GetAtt VectorIndexFunction.Arn
 
 Outputs:
   SupplierKBRoleArn:

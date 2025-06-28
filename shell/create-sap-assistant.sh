@@ -23,7 +23,8 @@ aws cloudformation create-stack \
 --stack-name ${STACK_NAME} \
 --template-body file://../cfn/sap-assistant-resources-01.yml \
 --parameters \
-ParameterKey=ArtifactBucket,ParameterValue=${ARTIFACT_BUCKET_NAME} \
+ParameterKey=MyAssetsBucketName,ParameterValue=${ARTIFACT_BUCKET_NAME} \
+ParameterKey=MyAssetsBucketPrefix,ParameterValue="" \
 ParameterKey=SecurityGroupId,ParameterValue=${SECURITY_GROUP_ID} \
 ParameterKey=SubnetId01,ParameterValue=${PRIV_SUBNET_ID01} \
 ParameterKey=SubnetId02,ParameterValue=${PRIV_SUBNET_ID02} \
