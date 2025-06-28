@@ -355,8 +355,9 @@ ORDER BY creationdate
 You should now see data returned directly from the bucket.  In this example we are querying the table rfq_header, in database athena_db. This database was created when we ran the crawler earlier.
 
 
-## Prepare Frontent Code Component
-The chat interface for this solution is built using React and hosted on AWS Amplify. 
+## Prepare Frontend Code Component
+The chat interface for this solution is built using React and hosted on AWS Amplify.
+
 **Note:** This deployment.zip would be requested to be copied to ***frontend*** folder in our repository to deploy it as application in AWS Amplify
 
 1. Clone repository to your local machine:
