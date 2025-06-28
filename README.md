@@ -389,7 +389,7 @@ npm run build
 ```bash
 cd dist
 zip -r ../deployment.zip ./*
-cd ..
+cd ../..
 ```
 
 ## Enable Models in Bedrock
