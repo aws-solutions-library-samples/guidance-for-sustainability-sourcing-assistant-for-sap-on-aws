@@ -164,8 +164,7 @@ Resources:
                   query = event['requestBody']['content']['application/json']['properties'][0]['value']
 
                   print("the received QUERY:",  query)
-        
-                  #s3_output = 's3://s30000000000/'
+                          
                   s3_output = f"s3://{os.environ['S3_BUCKET_NAME']}"
 
                   # Execute the query and wait for completion
@@ -629,6 +628,7 @@ Resources:
 
   SupplierKBRolePolicy:
     Type: AWS::IAM::Policy
+    DependsOn: OpenSearchCollection
     Properties:
       PolicyName: !Sub "supplierkbpolicy-${AWS::StackName}"
       PolicyDocument:
@@ -664,7 +664,7 @@ Resources:
               - "aoss:DeleteCollectionItems"
               - "aoss:UpdateCollectionItems"
               - "aoss:DescribeCollectionItems"
-            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*"
+            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${OpenSearchCollection.Name}"
           - Effect: Allow
             Action:
               - s3:GetObject
@@ -769,12 +769,6 @@ Resources:
         Type: "VECTORSEARCH"
         StandbyReplicas: "DISABLED"
 
-
-
-
-
-
-
 Outputs:
   SupplierKBRoleArn:
     Description: "ARN of the Supplier Knowledge Base Role"
@@ -795,4 +789,3 @@ Outputs:
   SAPPOCreateLambdaArn:
     Description: "ARN of the SAP PO Create Lambda"
     Value: !GetAtt SAPPOCreateLambda.Arn
-
