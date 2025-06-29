@@ -358,7 +358,7 @@ You should now see data returned directly from the bucket.  In this example we a
 ## Prepare Frontend Code Component
 The chat interface for this solution is built using React and hosted on AWS Amplify.
 
-**Note:** This deployment.zip would be requested to be copied to ***frontend*** folder in our repository to deploy it as application in AWS Amplify
+**Note:** This deployment.zip will need to be copied to the ***frontend*** folder in our repository in order to deploy it as application in AWS Amplify.  Please follow the steps below:
 
 1. Clone repository to your local machine:
 
