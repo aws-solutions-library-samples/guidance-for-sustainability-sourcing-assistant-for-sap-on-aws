@@ -944,6 +944,9 @@ Resources:
         ParentStackName: !Ref AWS::StackName
         S3BucketName: !Ref MyAssetsBucketName
         S3KeyName: frontent/deployment.zip
+        SecurityGroupId: !Ref SecurityGroupId
+        SubnetId01: !Ref SubnetId01
+        SubnetId02: !Ref SubnetId02
       TemplateURL: !Sub "https://${MyAssetsBucketName}.s3.amazonaws.com/cfn/sap-assistant-resources-03.yml"
 
 Outputs:

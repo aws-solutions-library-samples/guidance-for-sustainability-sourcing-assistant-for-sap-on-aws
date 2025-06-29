@@ -450,8 +450,10 @@ a. Before you run the shell script, navigate to the directory where you cloned t
 If not already cloned, clone the remote repository (https://github.com/aws-samples/amazon-bedrock-sap-sustainability-assistant) and change working directory to shell folder:
 
 The Lambda layer contains third-party Python packages (requests, opensearch-py) that aren't included in the standard AWS Lambda runtime, so you must build and package these dependencies locally before deployment to ensure the Lambda functions can make HTTP calls to SAP systems and interact with OpenSearch.
-```sh
+
 Build the layer:
+
+```sh
 cd agent/lambda
 chmod +x build-layer.sh
 ./build-layer.sh
