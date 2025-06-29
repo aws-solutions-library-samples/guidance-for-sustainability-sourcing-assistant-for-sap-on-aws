@@ -4,7 +4,7 @@ This guide shows how to enhance business efficiency and user experience through 
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
-- [Code Deploymet](#code-deploymet-to-build-bedrock-lambda-and-knowlede-base)
+- [Code Deploymet](#code-deployment-to-build-bedrock-lambda-and-knowlede-base)
 - [Test Conversation](#test-conversation)
 - [Configure AWS Amplify Web UI for Your Agent](#configure-aws-amplify-ui-to-connect-to-amazon-bedrock)
 - [Conclusion](#conclusion)
