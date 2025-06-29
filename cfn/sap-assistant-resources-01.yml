@@ -164,7 +164,8 @@ Resources:
                   query = event['requestBody']['content']['application/json']['properties'][0]['value']
 
                   print("the received QUERY:",  query)
-                          
+        
+                  #s3_output = 's3://s30000000000/'
                   s3_output = f"s3://{os.environ['S3_BUCKET_NAME']}"
 
                   # Execute the query and wait for completion
@@ -628,7 +629,6 @@ Resources:
 
   SupplierKBRolePolicy:
     Type: AWS::IAM::Policy
-    DependsOn: OpenSearchCollection
     Properties:
       PolicyName: !Sub "supplierkbpolicy-${AWS::StackName}"
       PolicyDocument:
@@ -664,7 +664,7 @@ Resources:
               - "aoss:DeleteCollectionItems"
               - "aoss:UpdateCollectionItems"
               - "aoss:DescribeCollectionItems"
-            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${OpenSearchCollection.Name}"
+            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${GenerateRandomStrings.RandomString1}"
           - Effect: Allow
             Action:
               - s3:GetObject
@@ -769,23 +769,212 @@ Resources:
         Type: "VECTORSEARCH"
         StandbyReplicas: "DISABLED"
 
+  VectorIndexFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: OpenSearchCollection
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+           - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import os
+          import time
+          from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth, OpenSearchException
+
+          def handler(event, context):
+            try:
+              print(event)
+              if event['RequestType'] in ['Create', 'Update']:
+                time.sleep(60) 
+                session = boto3.Session()
+                credentials = session.get_credentials()
+                region = session.region_name
+
+                auth = AWSV4SignerAuth(credentials, region, service='aoss')
+                
+                collection_endpoint = os.environ['COLLECTION_ENDPOINT'].replace('https://', '')
+                
+                client = OpenSearch(
+                  hosts=[{'host': collection_endpoint, 'port': 443}],
+                  http_auth=auth,
+                  use_ssl=True,
+                  verify_certs=True,
+                  connection_class=RequestsHttpConnection,
+                  timeout=300
+                )
+
+                index_name = "bedrock-knowledge-base-default-index"
+                index_body = {
+                  "settings": {
+                    "index": {
+                      "knn": True,
+                      "knn.algo_param.ef_search": 512
+                    }
+                  },
+                  "mappings": {
+                    "properties": {
+                      "bedrock-knowledge-base-default-vector": {
+                        "type": "knn_vector",
+                        "dimension": 1024,
+                        "method": {
+                          "engine": "faiss",
+                          "name": "hnsw",
+                          "space_type": "l2",
+                          "parameters": {
+                            "ef_construction": 512,
+                            "m": 16
+                          }
+                        }
+                      },
+                      "AMAZON_BEDROCK_METADATA": {
+                        "type": "text",
+                        "index": False
+                      },
+                      "AMAZON_BEDROCK_TEXT_CHUNK": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "id": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "x-amz-bedrock-kb-data-source-id": {
+                        "type": "text",
+                        "index": True
+                      },
+                      "x-amz-bedrock-kb-source-uri": {
+                        "type": "text",
+                        "index": True
+                      }
+                    }
+                  }
+                }
+
+                response = client.indices.create(
+                  index=index_name,
+                  body=index_body
+                )
+
+                print(response)
+                
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              else:
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            except Exception as e:
+              print(e)
+              cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+      Environment:
+        Variables:
+          COLLECTION_ENDPOINT: !GetAtt OpenSearchCollection.CollectionEndpoint
+      Runtime: "python3.13"
+      Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+      Policies:
+        - PolicyName: OpenSearchAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'aoss:CreateIndex'
+                  - 'aoss:DeleteIndex'
+                  - 'aoss:UpdateIndex'
+                  - 'aoss:DescribeIndex'
+                  - 'aoss:ReadDocument'
+                  - 'aoss:WriteDocument'
+                  - 'aoss:CreateCollectionItems'
+                  - 'aoss:DeleteCollectionItems'
+                  - 'aoss:UpdateCollectionItems'
+                  - 'aoss:DescribeCollectionItems'
+                  - 'aoss:APIAccessAll'
+                Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${GenerateRandomStrings.RandomString1}"
+
+  CreateVectorIndex:
+    Type: Custom::CreateVectorIndex
+    DependsOn: 
+      - OpenSearchAccessPolicy
+      - OpenSearchSecurityPolicy
+      - OpenSearchCollection
+      - LambdaExecutionRole
+    Properties:
+      ServiceToken: !GetAtt VectorIndexFunction.Arn
+
+  KBNAgent:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: CreateVectorIndex
+    Properties:
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        ArtifactBucket: !Ref MyAssetsBucketName
+        SupplierKBRole: !GetAtt SupplierKBRole.Arn
+        OpenSearchCollection: !GetAtt OpenSearchCollection.Arn
+        SupplierBucket: !GetAtt SupplierBucket.Arn
+        SAPAthenaResponseLambda: !GetAtt SAPAthenaResponseLambda.Arn
+        SAPPOCreateLambda: !GetAtt SAPPOCreateLambda.Arn
+      TemplateURL: !Sub "https://${MyAssetsBucketName}.s3.amazonaws.com/cfn/sap-assistant-resources-02.yml"
+
+  Frontend:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        S3BucketName: !Ref MyAssetsBucketName
+        S3KeyName: frontent/deployment.zip
+      TemplateURL: !Sub "https://${MyAssetsBucketName}.s3.amazonaws.com/cfn/sap-assistant-resources-03.yml"
+
 Outputs:
-  SupplierKBRoleArn:
-    Description: "ARN of the Supplier Knowledge Base Role"
-    Value: !GetAtt SupplierKBRole.Arn
+  BedrockAgentId:
+    Description: "ID of the created Bedrock Agent from nested stack"
+    Value: !GetAtt KBNAgent.Outputs.AgentId
 
-  OpenSearchCollectionArn:
-    Description: "ARN of the OpenSearch Collection"
-    Value: !GetAtt OpenSearchCollection.Arn
+  BedrockAgentAliasId:
+    Description: "ID of the created Bedrock Agent Alias from nested stack"
+    Value: !GetAtt KBNAgent.Outputs.AgentAliasId
 
-  SupplierBucketArn:
-    Description: "ARN of the Supplier Bucket"
-    Value: !GetAtt SupplierBucket.Arn
+  UserPoolId:
+    Description: Cognito User Pool ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.UserPoolId
 
-  SAPAthenaResponseLambdaArn:
-    Description: "ARN of the SAP Athena Response Lambda"
-    Value: !GetAtt SAPAthenaResponseLambda.Arn
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.UserPoolClientId
 
-  SAPPOCreateLambdaArn:
-    Description: "ARN of the SAP PO Create Lambda"
-    Value: !GetAtt SAPPOCreateLambda.Arn
+  IdentityPoolId:
+    Description: Cognito Identity Pool ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.IdentityPoolId
+
+  FrontendRegion:
+    Description: AWS Region from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.Region
+
+  FrontendAmplifyAppId:
+    Description: Amplify App ID from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.AmplifyAppId
+
+  FrontendAppURL:
+    Description: Application URL from Frontend Stack
+    Value: !GetAtt Frontend.Outputs.AppURL
