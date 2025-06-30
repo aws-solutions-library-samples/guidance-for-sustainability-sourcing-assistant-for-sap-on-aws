@@ -513,13 +513,13 @@ Knowledge Bases for Amazon Bedrock leverage Retrieval Augmented Generation (RAG)
 
 [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) is used to store the SAP credentials. The action group lambda functions read the SAP environment credentials from the secrets manager secrets.
 
-The deployment creates a secret with the name `sap_credentials`.
+The deployment creates a secret with the name `sap_secret_cred`.
 
 Update your SAP environment credentials which can call the ODATA APIs. In our usecase we have used bpinst user credentials.
 
 a. Naviage to [AWS Secrets Manager Console](https://console.aws.amazon.com/secretsmanager/listsecrets?).
 
-b. Locate and select the secret `sap_credentials`.
+b. Locate and select the secret `sap_secret_cred`.
 
 c. Click on `Retrieve secret value` button to edit the password.
 <p align="center">
@@ -558,8 +558,11 @@ Update the environment variables for the AWS Lambda functions created by this de
 
    f. Update the following environment variables:
 
-      SAP_BASE_URL: Enter the appropriate Base URL for your applicaiton
-      Example: https://yourssaplogin.com
+      API_AWARD_URL: Enter your ODATA API URL for Award Quotation
+      Example: https://yourssapenv.com/sap/opu/odata/sap/MM_PUR_QTN_MAINTAIN_SRV/C_SuplrQuotationEnhWD
+
+      API_CREATE_PO_URL: Enter your ODATA API URL to create Purchase Order
+      Example: https://yourssapenv.com/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrder 
 
       S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account 
       Example:rfq-123456778910
