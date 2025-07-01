@@ -407,12 +407,12 @@ To deploy this solution, your IAM user/role or service role must have permission
 
 You must also have [AWS Command Line Interface](https://aws.amazon.com/cli/) (CLI) installed. For instructions on installing AWS CLI, please see [Installing, updating, and uninstalling the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html).
 
-### 1. Clone [_amazon-bedrock-sap-sustainability-assistant_](git@ssh.gitlab.aws.dev:mahasrid/SAP-GenAI-Sustainability-Assistant.git) Repository
+### 1. Clone [_amazon-bedrock-sap-sustainability-assistant_](https://github.com/aws-solutions-library-samples/guidance-for-sustainability-sourcing-assistant-for-sap-on-aws.git) Repository
 
 Create a local copy of the **amazon-bedrock-sap-sustainability-assistant** repository using _git clone_:
 
 ```sh
-git clone git@ssh.gitlab.aws.dev:mahasrid/SAP-GenAI-Sustainability-Assistant.git
+git clone [https://github.com/aws-solutions-library-samples/guidance-for-sustainability-sourcing-assistant-for-sap-on-aws.git]
 ```
 
 #### Optional - Run Security Scan on the AWS CloudFormation Templates
