@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Supporting resources for SAP GenAI assistant powered by Agents and Knowledge base for Amazon Bedrock"
+Description: "(SO9594) Supporting resources for SAP GenAI assistant powered by Agents and Knowledge base for Amazon Bedrock"
 Metadata:
   LICENSE: >-
     Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
