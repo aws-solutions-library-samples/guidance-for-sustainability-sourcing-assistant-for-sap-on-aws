@@ -19,7 +19,7 @@ Key procurement pain points include time-consuming quotation review processes, t
 
 
 <p align="center">
-  <img src="../Architecture/arch01.png" width="90%" height="90%"><br>
+  <img src="./Architecture/arch01.png" width="90%" height="90%"><br>
   <span style="display: block; text-align: center;"><em>Figure 1: Architecture topology of the solution</em></span>
 </p>
 
