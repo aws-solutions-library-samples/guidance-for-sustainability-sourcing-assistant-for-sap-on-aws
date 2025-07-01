@@ -85,10 +85,10 @@ Create the following, as per the previous blog instructions using the code for t
 
 Example code which can be used to create the CDS views can be found below for ZRFQ, ZRFQITEM, ZSUPPLIERQUOTE & ZSUPPLIERQUOTEITEM.
 
-[ZRFQV](../sap-cds-views/ZRFQV)
-[ZRFQITEMV](../sap-cds-views/ZRFQITEMV)
-[ZSUPPLIERQUOTEV](../sap-cds-views/ZSUPPLIERQUOTEV)
-[ZSUPPLQUOTEITEMV](../sap-cds-views/ZSUPPLQUOTEITEMV)
+[ZRFQV](./sap-cds-views/ZRFQV)
+[ZRFQITEMV](./sap-cds-views/ZRFQITEMV)
+[ZSUPPLIERQUOTEV](./sap-cds-views/ZSUPPLIERQUOTEV)
+[ZSUPPLQUOTEITEMV](./sap-cds-views/ZSUPPLQUOTEITEMV)
 
 # Amazon S3 Bucket Setup Instructions
 
@@ -441,7 +441,7 @@ cp ../sample-cognito-integrated-bedrock-agents-chat-ui/deployment.zip frontend/
 ---
 
 ### 3. Deploy CloudFormation Stack to Emulate SAP assistant
-To emulate the creation of resources utilized by the agent, this solution uses the [create-sap-assistant.sh](../shell/create-sap-assistant.sh) shell script to automate provisioning of the parameterized CloudFormation template, [sap-assistant-resources-01.yml](../cfn/sap-assistant-resources-01.yml)
+To emulate the creation of resources utilized by the agent, this solution uses the [create-sap-assistant.sh](./shell/create-sap-assistant.sh) shell script to automate provisioning of the parameterized CloudFormation template, [sap-assistant-resources-01.yml](./cfn/sap-assistant-resources-01.yml)
 
 CloudFormation prepopulates stack parameters with the default values provided in the template. To provide alternative input values, you can specify parameters as environment variables that are referenced in the `ParameterKey=<ParameterKey>,ParameterValue=<Value>` pairs in the _create-customer-resources.sh_ shell script's `aws cloudformation create-stack` command. 
 
@@ -474,7 +474,7 @@ export SECURITY_GROUP_ID=<YOUR-SECURITY-GROUP-ID> # Security group of AWS EC2 in
 export PRIV_SUBNET_ID01=<YOUR-PRIV-SUBNET-ID-01> # Private subnet that can access SAP environment
 export PRIV_SUBNET_ID02=<YOUR-PRIV-SUBNET-ID-02> # Private subnet where SAP environment is running
 ```
-c. Run the [create-sap-assistant.sh](../shell/create-sap-assistant.sh) shell script to deploy the emulated hr resources defined in the [sap-assistant-resources-01.yml](../cfn/sap-assistant-resources-01.yml) CloudFormation template. These are the resources on which the agent and knowledge base will be built:
+c. Run the [create-sap-assistant.sh](./shell/create-sap-assistant.sh) shell script to deploy the emulated hr resources defined in the [sap-assistant-resources-01.yml](./cfn/sap-assistant-resources-01.yml) CloudFormation template. These are the resources on which the agent and knowledge base will be built:
 
 Run the following commands to deploy the resources:  This will kick off the relevant stack creation in CloudFormation.  Please monitor and wait for completion.
 ```sh
@@ -678,7 +678,7 @@ The solution provides a practical example of how generative AI can be implemente
 To avoid charges in your AWS account, please clean up the solution's provisioned resources.
 
 ## Delete Emulated SAP Assistant
-The [delete-sap-assistant](../shell/delete-sap-assistant.sh) shell script empties and deletes the solution's Amazon S3 bucket and deletes the resources that were originally provisioned from the [sap-assistant-resources-01.yml](../cfn/sap-assistant-resources-01.yml) CloudFormation stack. The following commands use the default stack name. If you customized the stack name, adjust the commands accordingly.
+The [delete-sap-assistant](./shell/delete-sap-assistant.sh) shell script empties and deletes the solution's Amazon S3 bucket and deletes the resources that were originally provisioned from the [sap-assistant-resources-01.yml](./cfn/sap-assistant-resources-01.yml) CloudFormation stack. The following commands use the default stack name. If you customized the stack name, adjust the commands accordingly.
 
 ```sh
 # cd amazon-bedrock-sap-sustainability-assistant/shell/
