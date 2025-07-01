@@ -412,7 +412,7 @@ You must also have [AWS Command Line Interface](https://aws.amazon.com/cli/) (CL
 Create a local copy of the **amazon-bedrock-sap-sustainability-assistant** repository using _git clone_:
 
 ```sh
-git clone [https://github.com/aws-solutions-library-samples/guidance-for-sustainability-sourcing-assistant-for-sap-on-aws.git]
+git clone https://github.com/aws-solutions-library-samples/guidance-for-sustainability-sourcing-assistant-for-sap-on-aws.git
 ```
 
 #### Optional - Run Security Scan on the AWS CloudFormation Templates
