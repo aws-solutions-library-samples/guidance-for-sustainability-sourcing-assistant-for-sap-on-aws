@@ -69,7 +69,7 @@ Total estimated cost: ~$900/month for 30,000 purchase orders
 This solution guidance utilises SAP Standard Delta Enabled CDS views. These views need to be exposed as OData services in transaction SEGW. You can follow this [blog](https://community.sap.com/t5/technology-blog-posts-by-members/exposing-sap-bw-extractors-via-odp-as-an-odata-service/ba-p/13473362), from step 3 onwards, selecting ABAP Core Data Services instead of DataSources/Extractors (see screenshot below).
 
 <p align="center">
-  <img src="../imgs/Odata1.png" width="90%" height="90%"><br>
+  <img src="./imgs/Odata1.png" width="90%" height="90%"><br>
   <span style="display: block; text-align: center;"><em>Figure 2: Create Odata service in SAP</em></span>
 </p>
 
@@ -105,29 +105,29 @@ Next we need to define the SAP system in Amazon AppFlow as a “Connection”
 
 1. Go to Amazon AppFlow Service in the AWS console and go to Connections:
 <p align="center">
-  <img src="../imgs/appflow1.png" width="90%" height="90%"><br>
+  <img src="./imgs/appflow1.png" width="90%" height="90%"><br>
 </p>
 
 <p align="center">
-  <img src="../imgs/appflow2.png" width="90%" height="90%"><br>
+  <img src="./imgs/appflow2.png" width="90%" height="90%"><br>
 </p>
 
 2. Click on the drop-down to choose a Connector type, search for SAP and choose SAP OData.
 
 <p align="center">
-  <img src="../imgs/appflow3.png" width="90%" height="90%"><br>
+  <img src="./imgs/appflow3.png" width="90%" height="90%"><br>
 </p>
 
 Afterwards click on Create Connection
 
 <p align="center">
-  <img src="../imgs/appflow4.png" width="60%" height="60%"><br>
+  <img src="./imgs/appflow4.png" width="60%" height="60%"><br>
 </p>
 
 3. In the following screen, the connection parameters need to be defined:
 
 <p align="center">
-  <img src="../imgs/appflow5.png" width="60%" height="60%"><br>
+  <img src="./imgs/appflow5.png" width="60%" height="60%"><br>
 </p>
 
 Connection name is the name of the connection, we can use anything. For example sap--system
@@ -162,17 +162,17 @@ Clicking on Connect creates the Connection.
 
 1. Amazon Appflow > Flows > Create Flow
 <p align="center">
-  <img src="../imgs/flow1.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow1.png" width="90%" height="90%"><br>
 </p>
 
 2. Enter name of Flow, this example is for RFQ HEADER
 <p align="center">
-  <img src="../imgs/flow2.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow2.png" width="90%" height="90%"><br>
 </p>
 
 3. Select Source details, using the OData connection you created earlier (in this example we are using the name "sapconnection").
 <p align="center">
-  <img src="../imgs/flow3.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow3.png" width="90%" height="90%"><br>
 </p>
 
 Enter thr SAP OData object, and subobject which we created as part of the SAP prerequisites earlier.
@@ -181,11 +181,11 @@ SAP Odata subobject FactsOfZRFQV
 
 4. Select the Destination details for the flow.  use the bucket name you created earlier prefix rfq-xxx
 <p align="center">
-  <img src="../imgs/flow4.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow4.png" width="90%" height="90%"><br>
 </p>
 5. Change flow trigger to Run flow on Schedule.  In this example we will run on every 5 minutes.
 <p align="center">
-  <img src="../imgs/flow5.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow5.png" width="90%" height="90%"><br>
 </p>
 
 6. Map data fields
@@ -193,27 +193,27 @@ SAP Odata subobject FactsOfZRFQV
 Select source field name, and Map all fields directly.  
 
 <p align="center">
-  <img src="../imgs/flow6.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow6.png" width="90%" height="90%"><br>
 </p>
 
 
 You should then end up with the following. Notice the Field Mappings at the bottom.
 <p align="center">
-  <img src="../imgs/flow7.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow7.png" width="90%" height="90%"><br>
 </p>
 
 Click Next
 
 In the Add Filters screen, select next as we wont be adding any filters in this example
 <p align="center">
-  <img src="../imgs/flow8.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow8.png" width="90%" height="90%"><br>
 </p>
 
 In the next screen you will be presented with a summary.  Click on Create flow button on the bottom right of the screen.
 
 Click on Run Flow
 <p align="center">
-  <img src="../imgs/flow9.png" width="90%" height="90%"><br>
+  <img src="./imgs/flow9.png" width="90%" height="90%"><br>
 </p>
 
 Repeat the above for the remaining flows.
@@ -236,77 +236,77 @@ Go to [AWS Glue](https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html), 
 
 Create crawler.
 <p align="center">
-  <img src="../imgs/crawl1.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl1.png" width="90%" height="90%"><br>
 </p>
 
 Set name and description.
 <p align="center">
-  <img src="../imgs/crawl2.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl2.png" width="90%" height="90%"><br>
 </p>
 
 click Add data source
 <p align="center">
-  <img src="../imgs/crawl3.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl3.png" width="90%" height="90%"><br>
 </p>
 
 Select the Amazon S3 bucket which we intend to crawl. This contains the appflow data we setup earlier.
 <p align="center">
-  <img src="../imgs/crawl4a.png" width="50%" height="60%"><br>
+  <img src="./imgs/crawl4a.png" width="50%" height="60%"><br>
 </p>
 
 Next.
 <p align="center">
-  <img src="../imgs/crawl5.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl5.png" width="90%" height="90%"><br>
 </p>
 
 Select create new IAM role.
 <p align="center">
-  <img src="../imgs/crawl6.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl6.png" width="90%" height="90%"><br>
 </p>
 
 Give the postfix of whatever makes sense, in this example we have used the postfix SAP.
 <p align="center">
-  <img src="../imgs/crawl7.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl7.png" width="90%" height="90%"><br>
 </p>
 
 Click Add database.
 <p align="center">
-  <img src="../imgs/crawl8.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl8.png" width="90%" height="90%"><br>
 </p>
 
 Name the database to athena_db, which is the name of the database used in the Lambda function.
 <p align="center">
-  <img src="../imgs/crawl9.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl9.png" width="90%" height="90%"><br>
 </p>
 
 Now back to the Crawler configuration and selcet the databse we just created.  In our case athena_db.
 
 <p align="center">
-  <img src="../imgs/crawl10.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl10.png" width="90%" height="90%"><br>
 </p>
 
 In the summary screen select create crawler.
 
 <p align="center">
-  <img src="../imgs/crawl11.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl11.png" width="90%" height="90%"><br>
 </p>
 
 In the next screen, click run crawler.
 
 <p align="center">
-  <img src="../imgs/crawl12.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl12.png" width="90%" height="90%"><br>
 </p>
 
 The crawler should start running, and you will see the tables it has created once it's completed.  Here you can see its found 4 tables in the Amazon s3 bucket.
 
 <p align="center">
-  <img src="../imgs/crawl13.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl13.png" width="90%" height="90%"><br>
 </p>
 
 If you click on the tables you can see whats been created.
 
 <p align="center">
-  <img src="../imgs/crawl14.png" width="90%" height="90%"><br>
+  <img src="./imgs/crawl14.png" width="90%" height="90%"><br>
 </p>
 
 Next we will validate we can access the data in Amazon Athena.  This is so we can query in Amazon Athena, and use within Amazon Bedrock as part of the use case.
@@ -317,7 +317,7 @@ Next we will validate we can access the data in Amazon Athena.  This is so we ca
 Go to Athena, select Data Source “AwsDataCatalog” on the left-hand pane, select database “athena_db”, or the name you used earlier. 
 
 <p align="center">
-  <img src="../imgs/ath1.png" width="30%" height="60%"><br>
+  <img src="./imgs/ath1.png" width="30%" height="60%"><br>
 </p>
 
 
@@ -331,7 +331,7 @@ ORDER BY creationdate
 > NOTE: If you receive the message "Before you run your first query, you need to setup a query result location in Amazon S3":
 
 <p align="center">
-  <img src="../imgs/s3warning.png" width="60%" height="40%"><br>
+  <img src="./imgs/s3warning.png" width="60%" height="40%"><br>
 </p>
 
 > Click the "Settings" tab in the top right corner of Athena
@@ -349,7 +349,7 @@ ORDER BY creationdate
 > Note: If you don't have an S3 bucket already, click the "Browse S3" button next to the location field to create one.
 
 <p align="center">
-  <img src="../imgs/ath2.png" width="90%" height="90%"><br>
+  <img src="./imgs/ath2.png" width="90%" height="90%"><br>
 </p>
 
 You should now see data returned directly from the bucket.  In this example we are querying the table rfq_header, in database athena_db. This database was created when we ran the crawler earlier.
@@ -505,7 +505,7 @@ Knowledge Bases for Amazon Bedrock leverage Retrieval Augmented Generation (RAG)
  e. Once the sync is completed, you will see another green banner with showing that the sync status being completed.
 
 <p align="center">
-  <img src="../imgs/01_kb_data_sync.png" width="90%" height="90%"><br>
+  <img src="./imgs/01_kb_data_sync.png" width="90%" height="90%"><br>
   <span style="display: block; text-align: center;"><em>Figure 1: Knowledge Base Data Source Sync</em></span>
 </p>
 
@@ -523,13 +523,13 @@ b. Locate and select the secret `sap_secret_cred`.
 
 c. Click on `Retrieve secret value` button to edit the password.
 <p align="center">
- <img src="../imgs/secret01.png" width="90%" height="90%"><br>
+ <img src="./imgs/secret01.png" width="90%" height="90%"><br>
  <span style="display: block; text-align: center;"><em>Figure 1: Secrets Manager Retrieve Secret Value</em></span>
 </p>
 
 d. Click on "Edit" button to enter your SAP environment credentials and click on "Save" button.
 <p align="center">
- <img src="../imgs/secret02.png" width="90%" height="90%"><br>
+ <img src="./imgs/secret02.png" width="90%" height="90%"><br>
  <span style="display: block; text-align: center;"><em>Figure 2: Secrets Manager Update Password</em></span>
 </p>
 
@@ -568,7 +568,7 @@ Update the environment variables for the AWS Lambda functions created by this de
       Example:rfq-123456778910
 
 <p align="center">
- <img src="../imgs/02_lmd_env_var01.png" width="90%" height="90%"><br>
+ <img src="./imgs/02_lmd_env_var01.png" width="90%" height="90%"><br>
  <span style="display: block; text-align: center;"><em>Figure 2: Lambda Environment Variable</em></span>
 </p>
 
@@ -579,7 +579,7 @@ Update the environment variables for the AWS Lambda functions created by this de
      S3_BUCKET_NAME: Enter the name of any existing S3 bucket in your account
 
 <p align="center">
- <img src="../imgs/03_lmd_env_var02.png" width="90%" height="90%"><br>
+ <img src="./imgs/03_lmd_env_var02.png" width="90%" height="90%"><br>
  <span style="display: block; text-align: center;"><em>Figure 3: Lambda Environment Variable</em></span>
 </p>
 
@@ -598,7 +598,7 @@ The agent in this sample solution will use an Titan-Text Premier foundation mode
 
 2. Select your `SustainablityAgent-<YOUR-STACK-NAME>`created and note your Agent ID and Alias ID:
 <p align="center">
-  <img src="../imgs/04_agent_alias.png" width="95%" height="95%"><br>
+  <img src="./imgs/04_agent_alias.png" width="95%" height="95%"><br>
   <span style="display: block; text-align: center;"><em>Figure 4: Agent Selection</em></span>
 </p>
 
@@ -628,7 +628,7 @@ Sample Prompts:
 * Create purchase order using quotation `<REPLACE WITH YOUR SAP QUOTATION>` ?
 
 <p align="center">
-  <img src="../imgs/05_agent_test.png" width="95%" height="95%"><br>
+  <img src="./imgs/05_agent_test.png" width="95%" height="95%"><br>
   <span style="display: block; text-align: center;"><em>Figure 5: Agent Testing and Validation</em></span>
 </p>
 
@@ -637,28 +637,28 @@ Sample Prompts:
 
 2. View the outputs, which we need for setting up the frontend UI.
 <p align="center">
-  <img src="../imgs/frotnend01.png" width="95%" height="95%"><br>
+  <img src="./imgs/frotnend01.png" width="95%" height="95%"><br>
   <span style="display: block; text-align: center;"><em>Figure 6: Stack Output</em></span>
 </p>
 
 3. Launch the frontend UI using the URL FrontendAppURL from the stack output and enter the configuration details as shown below and press save configuration. The values can be obtained from the stack output section.
 
 <p align="center">
-  <img src="../imgs/frotnend02.png" width="95%" height="95%"><br>
+  <img src="./imgs/frotnend02.png" width="95%" height="95%"><br>
   <span style="display: block; text-align: center;"><em>Figure 7: Configure UI</em></span>
 </p>
 
 5. Register new user using an email id and password.
 
 <p align="center">
-  <img src="../imgs/frotnend03.png" width="50%" height="50%"><br>
+  <img src="./imgs/frotnend03.png" width="50%" height="50%"><br>
   <span style="display: block; text-align: center;"><em>Figure 8: Register new user</em></span>
 </p>
 
 You would receive a verification code to complete the registration process.
 
 <p align="center">
-  <img src="../imgs/frotnend04.png" width="50%" height="50%"><br>
+  <img src="./imgs/frotnend04.png" width="50%" height="50%"><br>
   <span style="display: block; text-align: center;"><em>Figure 9: Complete registration</em></span>
 </p>
 
@@ -667,7 +667,7 @@ You would receive a verification code to complete the registration process.
 Create purchase order test example, replace with your quotation number
 
 <p align="center">
-  <img src="../imgs/amp4.png" width="95%" height="95%"><br>
+  <img src="./imgs/amp4.png" width="95%" height="95%"><br>
   <span style="display: block; text-align: center;"><em>Figure 11: Chat Frontend UI App</em></span>
 </p>
 
