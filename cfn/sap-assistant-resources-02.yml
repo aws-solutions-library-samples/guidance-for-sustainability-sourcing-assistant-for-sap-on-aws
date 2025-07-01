@@ -21,7 +21,7 @@ Parameters:
    ParentStackName:
      Description: Calling stack name
      Type: String 
-   ArtifactBucket:
+   MyAssetsBucketName:
     Description: S3 Asset Bucket
     Type: String
    SupplierKBRole:
@@ -120,8 +120,8 @@ Resources:
                   - "s3:GetObject"
                   - "s3:ListBucket"
                 Resource:
-                  - !Sub "arn:aws:s3:::${ArtifactBucket}"
-                  - !Sub "arn:aws:s3:::${ArtifactBucket}/*"
+                  - !Sub "arn:aws:s3:::${MyAssetsBucketName}"
+                  - !Sub "arn:aws:s3:::${MyAssetsBucketName}/*"
               - Effect: Allow
                 Action:
                   - "bedrock:Retrieve"
@@ -181,21 +181,21 @@ Resources:
             Lambda: !Ref SAPAthenaResponseLambda
           ApiSchema:
             S3:
-              S3BucketName: !Ref ArtifactBucket
+              S3BucketName: !Ref MyAssetsBucketName
               S3ObjectKey: "agent/api-schema/action-group-athena-query2.json"
         - ActionGroupName: "action-group-awardQuotation"
           ActionGroupExecutor:
             Lambda: !Ref SAPPOCreateLambda
           ApiSchema:
             S3:
-              S3BucketName: !Ref ArtifactBucket
+              S3BucketName: !Ref MyAssetsBucketName
               S3ObjectKey: "agent/api-schema/action-group-awardQuotation.json"
         - ActionGroupName: "action-group-createPO"
           ActionGroupExecutor:
             Lambda: !Ref SAPPOCreateLambda
           ApiSchema:
             S3:
-              S3BucketName: !Ref ArtifactBucket
+              S3BucketName: !Ref MyAssetsBucketName
               S3ObjectKey: "agent/api-schema/action-group-createPO.json"
       PromptOverrideConfiguration:
         PromptConfigurations:

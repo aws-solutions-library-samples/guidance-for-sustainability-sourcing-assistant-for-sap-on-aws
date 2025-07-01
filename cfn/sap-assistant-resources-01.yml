@@ -22,7 +22,7 @@ Metadata:
           default: Code Asset S3 Bucket, Lambda Deployment Package Keys, and Lambda Layer ARNs
         Parameters:
           - MyAssetsBucketName
-          - MyAssetsBucketPrefix  
+          - MyAssetsBucketPrefix
           - SecurityGroupId
           - SubnetId01
           - SubnetId02
@@ -64,7 +64,7 @@ Resources:
   SAPCredentials:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
-      Name: sap-credentials
+      Name: sap_secret_cred
       Description: SAP System Credentials
       KmsKeyId: alias/aws/secretsmanager
       SecretString: !Sub |
@@ -80,7 +80,7 @@ Resources:
       Description: Requests layer for Lambda Functions
       Content:
         S3Bucket: !Ref MyAssetsBucketName
-        S3Key: !Sub "${MyAssetsBucketPrefix}agent/lambda/python_os_req_auth.zip"
+        S3Key: agent/lambda/python_os_req_auth.zip
       CompatibleArchitectures:
         - x86_64
         - arm64
@@ -88,14 +88,11 @@ Resources:
         - python3.11
         - python3.12
         - python3.13
-    Metadata:
-      Comment: >-
-        This layer must be built by the customer before deployment.
-        See DEPLOYMENT_INSTRUCTIONS.md for details on building this layer.
 
   SAPAgentLambdaRole: 
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub ${AWS::StackName}-SAPAgentAGLambdaRole
       AssumeRolePolicyDocument:
         Statement:
           - Action: 'sts:AssumeRole'
@@ -111,7 +108,7 @@ Resources:
         - 'arn:aws:iam::aws:policy/ReadOnlyAccess'
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
       Policies:
-        - PolicyName: SAPLambdaMiscAccess
+        - PolicyName: S3WriteOnlyAccess
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -125,8 +122,7 @@ Resources:
                 Action:
                   - 'secretsmanager:GetSecretValue'
                   - 'secretsmanager:DescribeSecret'
-                Resource:
-                  - !Ref SAPCredentials
+                Resource: !Ref SAPCredentials
 
   SAPAthenaResponseFunctionPermission:
     Type: 'AWS::Lambda::Permission'
@@ -139,7 +135,14 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.lambda_handler
+      FunctionName: !Sub Bedrock-txtsql-action-${AWS::StackName}
       Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: 
+            - !Ref SecurityGroupId
+        SubnetIds: 
+            - !Ref SubnetId01
+            - !Ref SubnetId02
       Environment:
         Variables:
           S3_BUCKET_NAME: "UpdateYourBucketName"
@@ -165,7 +168,6 @@ Resources:
 
                   print("the received QUERY:",  query)
         
-                  #s3_output = 's3://s30000000000/'
                   s3_output = f"s3://{os.environ['S3_BUCKET_NAME']}"
 
                   # Execute the query and wait for completion
@@ -229,7 +231,10 @@ Resources:
               return api_response
 
       Runtime: "python3.13"
+      ReservedConcurrentExecutions: 10
       Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer
 
   SAPPOCreateFunctionPermission:
     Type: 'AWS::Lambda::Permission'
@@ -242,12 +247,19 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.lambda_handler
+      FunctionName: !Sub SAPPOC-action-${AWS::StackName}
       Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+            - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
       Environment:
         Variables:
           S3_BUCKET_NAME: "UpdateYourBucketName"
-          SAP_BASE_URL: "SAP Base URL"
-          SECRET_NAME: "sap-credentials"
+          API_AWARD_URL: "SAP API URL to Award Quotation"
+          API_CREATE_PO_URL: "SAP API URL to Create PO"
       Code:
         ZipFile: |
           import json
@@ -256,8 +268,9 @@ Resources:
           import time
           import os
           from datetime import datetime, timedelta
+          
           def get_secret():
-              secret_name = os.environ.get('SECRET_NAME')
+              secret_name = 'sap_secret_cred'
               region_name = os.environ.get('AWS_REGION')
               
               try:
@@ -278,6 +291,7 @@ Resources:
                       secret = json.loads(get_secret_value_response['SecretString'])
                       return secret['SAPUSER'], secret['SAPPASSWORD']
                   raise Exception("No secret string found in secret")
+          
           def execute_athena_query(query, athena_client, database, output_location):
               try:
                   response = athena_client.start_query_execution(
@@ -293,6 +307,7 @@ Resources:
                       if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
                           break
                       time.sleep(1)
+          
                   if status == 'SUCCEEDED':
                       return athena_client.get_query_results(QueryExecutionId=query_execution_id)
                   else:
@@ -300,13 +315,12 @@ Resources:
               except Exception as e:
                   print(f"Error executing Athena query: {str(e)}")
                   raise
-          def awardquote(event, base_url, username, password):
+          
+          def awardquote(event, username, password):
               try:
                   quotation_id = event['requestBody']['content']['application/json']['properties'][0]['value']
                   print(f"Awarding quotation: {quotation_id}")
-                  
-                  endpoint = '/sap/opu/odata/sap/MM_PUR_QTN_MAINTAIN_SRV/C_SuplrQuotationEnhWD'
-                  api_url = f"{base_url}{endpoint}"
+                  api_url = os.environ['API_AWARD_URL']
                   
                   print(f"Award Quotation API URL: {api_url}")
                   
@@ -329,6 +343,7 @@ Resources:
                   
                   csrf_token = csrf_response.headers.get('x-csrf-token')
                   print(f"CSRF Token received: {csrf_token}")
+          
                   # Step 2: Award quotation
                   headers = {
                       'X-CSRF-Token': csrf_token,
@@ -342,6 +357,7 @@ Resources:
                       "SupplierQuotation": quotation_id,
                       "IsActiveEntity": True
                   }
+          
                   response = session.post(
                       api_url,
                       headers=headers,
@@ -351,6 +367,7 @@ Resources:
                   
                   print(f"Award quotation response status: {response.status_code}")
                   print(f"Award quotation response: {response.text}")
+          
                   if response.status_code in [200, 201]:
                       return 200, {"message": f"Quotation {quotation_id} is awarded successfully."}
                   else:
@@ -360,13 +377,16 @@ Resources:
                   print(f"Error in award quote: {str(e)}")
                   return 500, {"message": f"Error awarding quotation: {str(e)}"}
 
-          def createPO(event, base_url, username, password):
+          def createPO(event, username, password):
               try:
                   athena_client = boto3.client('athena')
                   database = 'athena_db'
-                  output_location = f"s3://{os.environ['S3_BUCKET_NAME']}/athena-results/"
+                  output_location = f"s3://{os.environ['S3_BUCKET_NAME']}"
+          
                   quotation_number = event['requestBody']['content']['application/json']['properties'][0]['value']
+                  print(f"Creating PO for quotation: {quotation_number}")
                   
+                  # Parameterized header query
                   header_query = f"""
                       SELECT requestforquotation, companycode, purchasingorganization, purchasinggroup, documentcurrency, 
                              supplier, creationdate, qtnlifecyclestatus
@@ -375,43 +395,37 @@ Resources:
                       ORDER BY lastchangedatetime DESC
                       LIMIT 1
                   """
-                  
                   header_results = execute_athena_query(header_query, athena_client, database, output_location)
                   
-                  if not header_results['ResultSet']['Rows'] or len(header_results['ResultSet']['Rows']) < 2:
-                      raise Exception(f"No header data found for quotation {quotation_number}")
-                      
                   header_row = header_results['ResultSet']['Rows'][1]['Data']
                   quotation_status = header_row[7]['VarCharValue']
+          
                   if quotation_status in ['01', '02']:
-                      response_code, result = awardquote(event, base_url, username, password)
+                      response_code, result = awardquote(event, username, password)
                       if response_code != 200:
                           return response_code, result
+          
                   header_details = {
                       "CompanyCode": header_row[1]['VarCharValue'],
                       "Supplier": header_row[5]['VarCharValue'],
                       "PurchasingOrganization": header_row[2]['VarCharValue'],
                       "PurchasingGroup": header_row[3]['VarCharValue']
                   }
+          
+                  # Parameterized items query
                   items_query = f"""
-                      SELECT DISTINCT 
-                          supplierquotationitem, 
-                          plant, 
-                          CAST(CASE 
-                              WHEN netpriceamount = 0 THEN 0 
-                              ELSE CAST(netamount AS DECIMAL(18,2)) / CAST(netpriceamount AS DECIMAL(18,2)) 
-                          END AS INTEGER) AS orderquantity,
-                          netpriceamount, 
-                          netpricequantity, 
-                          material
+                      SELECT DISTINCT supplierquotationitem, plant, 
+                             CAST(CASE 
+                                 WHEN netpriceamount = 0 THEN 0 
+                                 ELSE CAST(netamount AS DECIMAL(18,2)) / CAST(netpriceamount AS DECIMAL(18,2)) 
+                             END AS INTEGER) AS orderquantity, 
+                             netpriceamount, netpricequantity, material
                       FROM supplier_quotation_items
                       WHERE supplierquotation = '{quotation_number}'
                   """
                   
                   items_results = execute_athena_query(items_query, athena_client, database, output_location)
-                  
-                  if not items_results['ResultSet']['Rows'] or len(items_results['ResultSet']['Rows']) < 2:
-                      raise Exception(f"No item data found for quotation {quotation_number}")
+          
                   line_items = [
                       {
                           "PurchaseOrderItem": row['Data'][0]['VarCharValue'],
@@ -422,6 +436,8 @@ Resources:
                           "Material": row['Data'][5]['VarCharValue']
                       } for row in items_results['ResultSet']['Rows'][1:]
                   ]
+          
+                  # The rest of the function remains unchanged
                   payload = {
                       "CompanyCode": header_details["CompanyCode"],
                       "PurchaseOrderType": "NB",
@@ -430,47 +446,53 @@ Resources:
                       "PurchasingGroup": header_details["PurchasingGroup"],
                       "to_PurchaseOrderItem": line_items
                   }
+          
+                  api_url = os.environ['API_CREATE_PO_URL']
                   
-                  endpoint = '/sap/opu/odata/sap/API_PURCHASEORDER_PROCESS_SRV/A_PurchaseOrder'
-                  api_url = f"{base_url}{endpoint}"
+                  print(f"Create PO API URL: {api_url}")
+          
                   session = requests.Session()
                   csrf_response = session.get(
                       api_url,
                       headers={'X-CSRF-Token': 'Fetch', 'Accept': 'application/json'},
-                      auth=(username, password),
-                      verify=False
+                      auth=(username, password)
                   )
                   
                   if csrf_response.status_code != 200:
                       raise Exception(f"Failed to fetch CSRF token. Status: {csrf_response.status_code}")
                   
                   csrf_token = csrf_response.headers.get('x-csrf-token')
+                  print(f"CSRF Token received: {csrf_token}")
                   
                   headers = {
                       'X-CSRF-Token': csrf_token,
                       'X-Requested-With': 'XMLHttpRequest',
                       'Accept': 'application/json',
+                      'Accept-Encoding': 'gzip,deflate',
                       'Content-Type': 'application/json'
-                  }
-                  
+                  } 
+          
+                  print(f"Request payload: {json.dumps(payload, indent=2)}")
+          
                   response = session.post(
                       api_url,
                       headers=headers,
                       json=payload,
-                      auth=(username, password),
-                      verify=False
+                      auth=(username, password)
                   )
-                  
+          
+                  print(f"PO Creation Response Status: {response.status_code}")
+                  print(f"PO Creation Response: {response.text}")
+          
                   if response.status_code == 201:
                       po_data = response.json()
                       purchase_order = po_data['d']['PurchaseOrder']
                       return 201, {"message": f"PO {purchase_order} Created Successfully"}
                   else:
                       error_details = response.json() if response.text else {"message": "Unknown error"}
-                      error_message = error_details.get('error', {}).get('message', {}).get('value', 'Unknown error')
-                      return 400, {"message": f"Failed to create PO: {error_message}"}
-                      
+                      return 400, {"message": f"Failed to create PO: {error_details.get('error', {}).get('message', {}).get('value', 'Unknown error')}"}
               except Exception as e:
+                  print(f"Error in create PO: {str(e)}")
                   return 500, {"message": f"Error creating PO: {str(e)}"}
 
           def lambda_handler(event, context):
@@ -479,27 +501,28 @@ Resources:
                   
                   action_group = event.get('actionGroup', 'defaultActionGroup')
                   api_path = event.get('apiPath', '/defaultApiPath')
-                  base_url = os.environ.get('SAP_BASE_URL')
-                  print(f"Base URL: {base_url}")
-                  
+                           
                   username, password = get_secret()
                   print(f"Username retrieved from Secrets Manager: {username}")
                   print("Password retrieved from Secrets Manager: Yes")
                   
                   if not username or not password:
                       raise Exception("Missing credentials in Secrets Manager")
+          
                   if api_path == '/awardQuotation':
-                      response_code, result = awardquote(event, base_url, username, password)
+                      response_code, result = awardquote(event, username, password)
                   elif api_path == '/createPO':
-                      response_code, result = createPO(event, base_url, username, password)
+                      response_code, result = createPO(event, username, password)
                   else:
                       response_code = 400
                       result = {"message": f"Invalid API path: {api_path}"}
+          
                   response_body = {
                       'application/json': {
                           'body': result
                       }
                   }
+          
                   action_response = {
                       'actionGroup': action_group,
                       'apiPath': api_path,
@@ -507,11 +530,14 @@ Resources:
                       'httpStatusCode': response_code,
                       'responseBody': response_body
                   }
+          
                   print(f"Final response: {json.dumps(action_response, indent=2)}")
+          
                   return {
                       'messageVersion': '1.0',
                       'response': action_response
                   }
+          
               except Exception as e:
                   print(f"Error in lambda_handler: {str(e)}")
                   result = {
@@ -523,6 +549,7 @@ Resources:
                           'body': result
                       }
                   }
+          
                   action_response = {
                       'actionGroup': action_group,
                       'apiPath': api_path,
@@ -530,18 +557,28 @@ Resources:
                       'httpStatusCode': 500,
                       'responseBody': response_body
                   }
+          
                   return {
                       'messageVersion': '1.0',
                       'response': action_response
                   }
       Runtime: "python3.13"
+      ReservedConcurrentExecutions: 10
       Timeout: 900
+      Layers:
+        - !Ref RequestsLambdaLayer 
 
   RandomStringFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.lambda_handler
       Role: !GetAtt SAPAgentLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+            - !Ref SecurityGroupId
+        SubnetIds:
+            - !Ref SubnetId01
+            - !Ref SubnetId02
       Code:
         ZipFile: |
           import json
@@ -587,6 +624,7 @@ Resources:
                   print(f"Error: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
       Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
       Timeout: 900
 
   GenerateRandomStrings:
@@ -664,7 +702,7 @@ Resources:
               - "aoss:DeleteCollectionItems"
               - "aoss:UpdateCollectionItems"
               - "aoss:DescribeCollectionItems"
-            Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${GenerateRandomStrings.RandomString1}"
+            Resource: !GetAtt OpenSearchCollection.Arn
           - Effect: Allow
             Action:
               - s3:GetObject
@@ -709,7 +747,8 @@ Resources:
                             }
                         ],
                         "Principal": [
-                            "${SupplierKBRole.Arn}"
+                            "${SupplierKBRole.Arn}",
+                            "${LambdaExecutionRole.Arn}"
                         ],
                         "Description": "Access policy for Bedrock Knowledge Base"
                     }]
@@ -875,7 +914,9 @@ Resources:
       Environment:
         Variables:
           COLLECTION_ENDPOINT: !GetAtt OpenSearchCollection.CollectionEndpoint
-      Runtime: "python3.13"
+      Timeout: 300
+      Runtime: "python3.12"
+      ReservedConcurrentExecutions: 10
       Timeout: 900
       Layers:
         - !Ref RequestsLambdaLayer
@@ -911,7 +952,7 @@ Resources:
                   - 'aoss:UpdateCollectionItems'
                   - 'aoss:DescribeCollectionItems'
                   - 'aoss:APIAccessAll'
-                Resource: !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/${GenerateRandomStrings.RandomString1}"
+                Resource: !GetAtt OpenSearchCollection.Arn
 
   CreateVectorIndex:
     Type: Custom::CreateVectorIndex
@@ -925,11 +966,11 @@ Resources:
 
   KBNAgent:
     Type: AWS::CloudFormation::Stack
-    DependsOn: CreateVectorIndex
+    DependsOn: Frontend 
     Properties:
       Parameters:
         ParentStackName: !Ref AWS::StackName
-        ArtifactBucket: !Ref MyAssetsBucketName
+        MyAssetsBucketName: !Ref MyAssetsBucketName
         SupplierKBRole: !GetAtt SupplierKBRole.Arn
         OpenSearchCollection: !GetAtt OpenSearchCollection.Arn
         SupplierBucket: !GetAtt SupplierBucket.Arn
@@ -939,6 +980,7 @@ Resources:
 
   Frontend:
     Type: AWS::CloudFormation::Stack
+    DependsOn: CreateVectorIndex
     Properties:
       Parameters:
         ParentStackName: !Ref AWS::StackName
@@ -948,6 +990,7 @@ Resources:
         SubnetId01: !Ref SubnetId01
         SubnetId02: !Ref SubnetId02
       TemplateURL: !Sub "https://${MyAssetsBucketName}.s3.amazonaws.com/cfn/sap-assistant-resources-03.yml"
+
 
 Outputs:
   BedrockAgentId:
